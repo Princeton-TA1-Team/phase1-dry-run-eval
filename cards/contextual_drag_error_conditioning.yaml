@@ -80,7 +80,7 @@ pipeline:
     executable: 'python -m cards.nodes.run_error_conditioning'
     algo_params:
       model_config: 'Qwen3_8B_NoThinking'
-      data_path: 'data/aime24/aime24.ds'
+      data_path: 'data/smoke/aime24/aime24.ds'
       regime: '2f'
       init_template_path: 'prompt_templates/init_response_prompt_templates.json'
       init_template_key: 'qwen_math_prompt'
@@ -90,7 +90,7 @@ pipeline:
       cond_template_key_2f: '2f'
       max_questions: 16
       n: 8
-      max_tokens: 2048
+      max_tokens: 8192
       gpu_memory_utilization: 0.85
     out_paths:
       results_fpath: 'results.json'

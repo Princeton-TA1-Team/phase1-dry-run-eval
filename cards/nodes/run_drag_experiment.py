@@ -296,11 +296,14 @@ class RunDragExperimentCLI(scfg.DataConfig):
 
 def _write_result(results_fpath: Path, *, acc_clean, acc_2f, drag,
                   n_kept_problems: int, cfg, aggregate_failed: bool) -> None:
+    # magnet's symbol resolver chokes on JSON null values, so use -1.0 as
+    # an out-of-range sentinel; the claim text detects aggregate_failed first.
+    _sentinel = -1.0
     payload = {
         "result": {
-            "acc_clean": acc_clean,
-            "acc_2f": acc_2f,
-            "drag": drag,
+            "acc_clean": _sentinel if acc_clean is None else acc_clean,
+            "acc_2f": _sentinel if acc_2f is None else acc_2f,
+            "drag": _sentinel if drag is None else drag,
             "n_kept_problems": n_kept_problems,
             "aggregate_failed": aggregate_failed,
             "model_config": str(cfg.model_config),

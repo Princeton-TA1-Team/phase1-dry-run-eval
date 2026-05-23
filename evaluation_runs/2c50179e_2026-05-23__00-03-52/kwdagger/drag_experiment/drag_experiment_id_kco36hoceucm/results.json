@@ -1,0 +1,17 @@
+{
+  "result": {
+    "acc_clean": -1.0,
+    "acc_2f": -1.0,
+    "drag": -1.0,
+    "n_kept_problems": 0,
+    "aggregate_failed": true,
+    "model_config": "Qwen3_8B_NoThinking",
+    "data_path": "data/smoke/gpqa/gpqa.ds",
+    "init_template_key": "qa_mc_prompt",
+    "twof_template_key": "2f",
+    "max_questions": 8,
+    "n": 8,
+    "num_true": 0,
+    "num_false": 2
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4
+      ],
+      "pass_at_k": [
+        0.4,
+        0.45,
+        0.48750000000000004,
+        0.5125,
+        0.5375,
+        0.5625,
+        0.5874999999999999,
+        0.6
+      ],
+      "std_maj_at_k": [
+        0.05,
+        0.05,
+        0.07071067811865477,
+        0.05,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.05,
+        0.07071067811865474,
+        0.07806247497997996,
+        0.07806247497997996,
+        0.06959705453537525,
+        0.0484122918275927,
+        0.03307189138830738,
+        0.0
+      ],
+      "total_questions": 10,
+      "n_trajectories": 8,
+      "overall_correctness": 0.4
+    },
+    "aime24": {
+      "maj_at_k": [
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4
+      ],
+      "pass_at_k": [
+        0.4,
+        0.45,
+        0.48750000000000004,
+        0.5125,
+        0.5375,
+        0.5625,
+        0.5874999999999999,
+        0.6
+      ],
+      "std_maj_at_k": [
+        0.05,
+        0.05,
+        0.07071067811865477,
+        0.05,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.05,
+        0.07071067811865474,
+        0.07806247497997996,
+        0.07806247497997996,
+        0.06959705453537525,
+        0.0484122918275927,
+        0.03307189138830738,
+        0.0
+      ],
+      "total_questions": 10,
+      "n_trajectories": 8,
+      "overall_correctness": 0.4
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 48,
+  "questions_with_all_incorrect": 4,
+  "questions_with_all_unparsable": 4,
+  "finish_reason_stats": {
+    "stop": 30,
+    "length": 50
+  },
+  "finish_reason_correctness": {
+    "stop": {
+      "correct": 30,
+      "incorrect": 0,
+      "unparsable": 0
+    },
+    "length": {
+      "correct": 2,
+      "incorrect": 0,
+      "unparsable": 48
+    }
+  },
+  "common_incorrect_patterns": {},
+  "sample_unparsable_responses": [
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC inscribed in circle ω. The given information is AB = 5, BC = 9, and AC = 10. The tangents at B and C meet at point D, and AD intersects"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC inscribed in circle ω. The tangents at B and C meet at D, and AD intersects ω again at P. Given sides AB=5, BC=9, AC=10. The answer sho"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 2,
+      "response_text": "<think>\nOkay, so I need to solve this geometry problem. Let me first try to visualize the problem and understand all the given information.\n\nWe have triangle ABC inscribed in a circle ω. The tangents "
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 3,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC with given side lengths AB=5, BC=9, and AC=10. The problem involves a circle ω circumscribed around triangle ABC, tangents at B and C m"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 4,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC inscribed in a circle ω. The tangents at B and C meet at D, and AD intersects ω again at P. Given sides AB=5, BC=9, AC=10. The answer s"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 5,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC inscribed in a circle ω. The tangents at B and C meet at point D, and AD intersects ω again at P. Given sides AB=5, BC=9, AC=10. The an"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 6,
+      "response_text": "<think>\nOkay, so I need to find the length of AP in triangle ABC with given sides AB=5, BC=9, and AC=10. The point D is where the tangents at B and C meet, and AD intersects the circumcircle ω again a"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "\\boxed{113}",
+      "response_id": 7,
+      "response_text": "<think>\nOkay, so I need to solve this geometry problem. Let me try to visualize it first. There's a triangle ABC inscribed in a circle ω. The tangents at B and C meet at point D, and then the line AD "
+    },
+    {
+      "question_id": "2",
+      "ground_truth": "\\boxed{371}",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, so I need to find the probability that a randomly colored regular octagon (with each vertex independently colored red or blue with equal chance) can be rotated so that all the blue verti"
+    },
+    {
+      "question_id": "2",
+      "ground_truth": "\\boxed{371}",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, so I need to find the probability that a randomly colored regular octagon (with each vertex independently colored red or blue with equal chance) can be rotated such that all blue vertice"
+    }
+  ]
+}

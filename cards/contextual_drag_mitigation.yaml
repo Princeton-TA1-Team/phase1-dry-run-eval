@@ -84,7 +84,7 @@ pipeline:
     executable: 'python -m cards.nodes.run_mitigation_experiment'
     algo_params:
       model_config: 'Qwen3_8B_NoThinking'
-      data_path: 'data/gpqa/gpqa.ds'
+      data_path: 'data/smoke/gpqa/gpqa.ds'
       variant: 'cm_filter1'
       init_template_path: 'prompt_templates/init_response_prompt_templates.json'
       init_template_key: 'qa_mc_prompt'
@@ -94,7 +94,7 @@ pipeline:
       max_questions: 16
       n: 8
       n_samples_solve: 8
-      max_tokens: 2048
+      max_tokens: 8192
       gpu_memory_utilization: 0.85
     out_paths:
       results_fpath: 'results.json'

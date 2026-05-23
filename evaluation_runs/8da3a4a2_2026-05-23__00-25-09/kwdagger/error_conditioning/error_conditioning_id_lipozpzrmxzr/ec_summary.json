@@ -1,0 +1,13 @@
+{
+  "correctness_raw": 0.8125,
+  "correctness_filtered": 0.5,
+  "correctness_raw_init_sampling": 0.5,
+  "correctness_filtered_init_sampling": 0.5,
+  "num_problems_cond": 2,
+  "num_problems_filtered": 2,
+  "num_problems_direct_matched": 2,
+  "num_problems_direct_filtered": 2,
+  "cond_path": "/scratch/gpfs/ARORA/xz4134/Research_src/Aggregation/in-context-aggregation/neurips_result_aggregation/AIQ-Contextual-Drag/evaluation_runs/8da3a4a2_2026-05-23__00-25-09/kwdagger/error_conditioning/error_conditioning_id_lipozpzrmxzr/cond_inference/evaluated_cond_inference.jsonl",
+  "direct_path": "/scratch/gpfs/ARORA/xz4134/Research_src/Aggregation/in-context-aggregation/neurips_result_aggregation/AIQ-Contextual-Drag/evaluation_runs/8da3a4a2_2026-05-23__00-25-09/kwdagger/error_conditioning/error_conditioning_id_lipozpzrmxzr/direct_inference/evaluated_direct_inference.jsonl",
+  "setting": "2f"
+}

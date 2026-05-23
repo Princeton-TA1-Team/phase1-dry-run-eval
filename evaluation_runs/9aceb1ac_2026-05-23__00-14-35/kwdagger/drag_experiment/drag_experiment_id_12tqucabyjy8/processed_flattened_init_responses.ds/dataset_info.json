@@ -1,0 +1,102 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "problem": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "answer": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "source": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "domain": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "llama8b_solve_rate": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "id": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_prompt": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_generations_metadata": {
+      "num_responses": {
+        "dtype": "int64",
+        "_type": "Value"
+      },
+      "n_samples_requested": {
+        "dtype": "int64",
+        "_type": "Value"
+      },
+      "n_samples_variant_default": {
+        "dtype": "int64",
+        "_type": "Value"
+      },
+      "template_path": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "template_key": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "model_config_alias": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "prompt_hash": {
+        "dtype": "string",
+        "_type": "Value"
+      }
+    },
+    "init_response_generations_response_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "init_response_generations_generated_response": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_generations_finish_reason": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_generations_correctness": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "init_response_generations_extracted_answer": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_final": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "init_response_thinking_status": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "response_unique_id": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}

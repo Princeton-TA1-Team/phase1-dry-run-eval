@@ -1,0 +1,9 @@
+{
+  "result": "INCONCLUSIVE",
+  "claim_aggregation_strategy": {
+    "type": "all"
+  },
+  "claims": [
+    "c63212757fd4"
+  ]
+}

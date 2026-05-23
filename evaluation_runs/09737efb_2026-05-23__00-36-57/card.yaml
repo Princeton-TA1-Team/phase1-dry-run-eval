@@ -1,0 +1,62 @@
+title: "Contextual Drag \xA74 \u2014 mitigation recovers drag failures"
+description: "Tests whether the \xA74 context-manipulation pipeline (cm_filter1 or\n\
+  cm_revise1) recovers problems that the model would have solved\ndirectly but fails\
+  \ when given a single failed trajectory in its\ncontext (the \"drag failures\").\
+  \ The pipeline either filters the\nfailed trajectory in-place (cm_filter1) or rewrites\
+  \ it (cm_revise1),\nthen solves the problem n=8 times; recovery is per-(problem,\
+  \ draft)\nwith a majority binarization at 0.5.\n\nSubprocess chain (per cell, single\
+  \ GPU):\n  inference run     (direct, clean prompt)\n    \u2192 eval math --flatten_dataset\n\
+  \    \u2192 data initial-sampling-postprocess\n    \u2192 data aggregate -T 0 -F\
+  \ 2\n    \u2192 data minimal-aggregate-flatten  (2F.ds \u2192 1F.ds)\n    \u2192\
+  \ inference run  (1F, 1f template) on 1F.ds\n    \u2192 eval math\n    \u2192 contextual_drag\
+  \ mitigation run\n          --variant cm_filter1 --model_config <X> --input_ds <1F.ds>\n\
+  \          --output_dir <mit_dir> --template_path <ctx_manip.json>\n    \u2192 contextual_drag\
+  \ analysis mitigation_buckets run\n          --direct_jsonl ... --onef_jsonl ...\
+  \ --mit_jsonl ...\n          --threshold 0.5 --variant cm_filter1 --out summary.json\n\
+  \    \u2192 load summary.derived.recovery_rate\n\nReplicates \xA74 of \"Contextual\
+  \ Drag\" (Cheng et al., 2026) on a small\nslice runnable on a single 24 GB GPU.\n"
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- contextual-drag
+- mitigation
+- reasoning
+claim:
+  python: "if aggregate_failed:\n  raise Exception(\n      \"Inconclusive: data aggregate\
+    \ produced 0 problems \u2014 increase \"\n      \"--n or pick a benchmark where\
+    \ the model occasionally fails \"\n      \"with a single false trajectory in context.\"\
+    \n  )\nif drag_failed_den == 0:\n  raise Exception(\n      \"Inconclusive: (Direct\
+    \ \u2713, 1F \u2717) cohort empty \u2014 no drag \"\n      \"failures to recover.\
+    \ Increase --n_problems or change task.\"\n  )\nif recovery_rate is None:\n  raise\
+    \ Exception(\n      \"Inconclusive: recovery_rate is null.\"\n  )\nassert recovery_rate\
+    \ >= recovery_threshold, (\n    f\"Got recovery_rate={recovery_rate:.3f}, expected\
+    \ >= \"\n    f\"{recovery_threshold:.3f} (recoverable_drag={recoverable_drag},\
+    \ \"\n    f\"persistent_drag={persistent_drag}, drag_failed_den={drag_failed_den},\
+    \ \"\n    f\"variant={variant}).\"\n)\n"
+pipeline:
+  mitigation_experiment:
+    executable: python -m cards.nodes.run_mitigation_experiment
+    algo_params:
+      model_config: Qwen3_8B_NoThinking
+      data_path: data/smoke/gpqa/gpqa.ds
+      variant: cm_filter1
+      init_template_path: prompt_templates/init_response_prompt_templates.json
+      init_template_key: qa_mc_prompt
+      onef_template_path: prompt_templates/1f_templates.json
+      onef_template_key: 1f
+      mit_template_path: prompt_templates/context_manipulation_templates.json
+      max_questions: 16
+      n: 8
+      n_samples_solve: 8
+      max_tokens: 8192
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: results.json
+symbols:
+  recovery_threshold:
+    type: float
+    value: 0.2

@@ -103,7 +103,7 @@ class RunTedExperimentCLI(scfg.DataConfig):
 
         print(f"[card-node TED] step 2/8: eval direct (--flatten_dataset)", flush=True)
         subprocess.run(cdrag + [
-            "eval", "math",
+            "eval", "game_of_24",
             "--dataset_dir", str(direct_dir),
             "--single_partition", "--n_jobs", "1",
             "--flatten_dataset",
@@ -159,7 +159,7 @@ class RunTedExperimentCLI(scfg.DataConfig):
 
         print(f"[card-node TED] step 6/8: eval 2F (--flatten_dataset)", flush=True)
         subprocess.run(cdrag + [
-            "eval", "math",
+            "eval", "game_of_24",
             "--dataset_dir", str(twof_dir),
             "--single_partition", "--n_jobs", "1",
             "--flatten_dataset",
@@ -216,11 +216,13 @@ class RunTedExperimentCLI(scfg.DataConfig):
 def _write_result(results_fpath: Path, cfg, *, ted_drag, mean_ted_2f,
                   mean_ted_direct, n_kept_problems: int,
                   aggregate_failed: bool) -> None:
+    # magnet's symbol resolver chokes on JSON null values; use -1.0 sentinel.
+    _s = -1.0
     payload = {
         "result": {
-            "ted_drag": ted_drag,
-            "mean_ted_2f": mean_ted_2f,
-            "mean_ted_direct": mean_ted_direct,
+            "ted_drag": _s if ted_drag is None else ted_drag,
+            "mean_ted_2f": _s if mean_ted_2f is None else mean_ted_2f,
+            "mean_ted_direct": _s if mean_ted_direct is None else mean_ted_direct,
             "n_kept_problems": n_kept_problems,
             "ted_metric": str(cfg.ted_metric),
             "ted_phase": str(cfg.ted_phase),

@@ -1,0 +1,9 @@
+{
+  "result": "VERIFIED",
+  "claim_aggregation_strategy": {
+    "type": "all"
+  },
+  "claims": [
+    "43a43f2bec27"
+  ]
+}

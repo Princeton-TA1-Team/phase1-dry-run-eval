@@ -1,0 +1,15 @@
+{
+  "mitigation_experiment.model_config": "Qwen3_8B_NoThinking",
+  "mitigation_experiment.data_path": "data/smoke/gpqa/gpqa.ds",
+  "mitigation_experiment.variant": "cm_filter1",
+  "mitigation_experiment.init_template_path": "prompt_templates/init_response_prompt_templates.json",
+  "mitigation_experiment.init_template_key": "qa_mc_prompt",
+  "mitigation_experiment.onef_template_path": "prompt_templates/1f_templates.json",
+  "mitigation_experiment.onef_template_key": "1f",
+  "mitigation_experiment.mit_template_path": "prompt_templates/context_manipulation_templates.json",
+  "mitigation_experiment.max_questions": 16,
+  "mitigation_experiment.n": 8,
+  "mitigation_experiment.n_samples_solve": 8,
+  "mitigation_experiment.max_tokens": 8192,
+  "mitigation_experiment.gpu_memory_utilization": 0.85
+}

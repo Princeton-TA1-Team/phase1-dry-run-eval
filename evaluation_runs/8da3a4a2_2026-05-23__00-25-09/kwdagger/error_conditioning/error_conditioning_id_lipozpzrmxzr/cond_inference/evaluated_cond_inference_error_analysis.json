@@ -1,0 +1,126 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.8125,
+        0.75,
+        0.9375,
+        0.9375,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "pass_at_k": [
+        0.8125,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "std_maj_at_k": [
+        0.24206145913796356,
+        0.25,
+        0.16535945694153692,
+        0.16535945694153692,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.24206145913796356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 2,
+      "n_trajectories": 8,
+      "overall_correctness": 0.8125
+    },
+    "aime24": {
+      "maj_at_k": [
+        0.8125,
+        0.75,
+        0.9375,
+        0.9375,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "pass_at_k": [
+        0.8125,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "std_maj_at_k": [
+        0.24206145913796356,
+        0.25,
+        0.16535945694153692,
+        0.16535945694153692,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.24206145913796356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 2,
+      "n_trajectories": 8,
+      "overall_correctness": 0.8125
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 1,
+  "questions_with_all_incorrect": 0,
+  "questions_with_all_unparsable": 0,
+  "finish_reason_stats": {
+    "stop": 15,
+    "length": 1
+  },
+  "finish_reason_correctness": {
+    "stop": {
+      "correct": 13,
+      "incorrect": 2,
+      "unparsable": 0
+    },
+    "length": {
+      "correct": 0,
+      "incorrect": 0,
+      "unparsable": 1
+    }
+  },
+  "common_incorrect_patterns": {
+    "236": 2
+  },
+  "sample_unparsable_responses": [
+    {
+      "question_id": "5",
+      "ground_truth": "\\boxed{104}",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's tackle this problem step by step. The goal is to find the distance from a point inside tetrahedron ABCD to each of its faces, given specific edge lengths. The answer should be in t"
+    }
+  ]
+}

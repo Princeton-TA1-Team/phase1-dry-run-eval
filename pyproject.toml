@@ -13,7 +13,9 @@ authors = [
   { name = "Contextual Drag Authors" }
 ]
 dependencies = [
-  "datasets>=2",
+  # Upper bound on datasets — crfm-helm (a magnet dep) requires datasets~=3.1
+  # and cannot accept 4.x; pin here so direct `pip install -e .` can't pick it.
+  "datasets>=3.1,<4",
   "joblib>=1.3",
   "numpy>=1.26",
   "pandas>=2",
@@ -24,9 +26,14 @@ dependencies = [
 
 [project.optional-dependencies]
 inference = [
-  "accelerate>=1.0",
-  "transformers>=4.45",
-  "vllm>=0.10",
+  # Upper bounds matter: vllm 0.10.x was built against transformers 4.55.x and
+  # torch 2.8.x. transformers 5.x removed `all_special_tokens_extended`, which
+  # vllm's tokenizer initializer still calls — installing it produces a hard
+  # AttributeError on engine startup. Keep these tight until vllm 0.11+ lands.
+  "accelerate>=1.10,<2",
+  "torch>=2.8,<2.9",
+  "transformers>=4.55,<5",
+  "vllm>=0.10,<0.11",
 ]
 eval = [
   "math-verify>=0.8.0",
@@ -54,7 +61,7 @@ magnet = [
   "pyyaml>=6.0.2",
   "rich>=14.1",
   "ruamel-yaml>=0.17.22",
-  "safer>=2024.1",
+  "safer>=2.0",
   "scikit-learn>=1.7.1",
   "typing-extensions>=4",
   "ubelt>=1.3.8",

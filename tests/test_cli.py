@@ -39,6 +39,7 @@ VERBS: list[list[str]] = [
     # eval leaves
     ["eval", "math"],
     ["eval", "crux"],
+    ["eval", "game_of_24"],
     # data leaves (hyphenated, matches __command__ in data/*_cli.py)
     ["data", "aggregate"],
     ["data", "aggregate-crux"],

@@ -1,0 +1,10 @@
+{
+  "run_inference_eval.model_config": "Qwen3_1.7B_NoThinking",
+  "run_inference_eval.data_path": "data/math500/math500.ds",
+  "run_inference_eval.prompt_template_path": "prompt_templates/init_response_prompt_templates.json",
+  "run_inference_eval.prompt_template_key": "qwen_math_prompt",
+  "run_inference_eval.max_questions": 4,
+  "run_inference_eval.n": 1,
+  "run_inference_eval.max_tokens": 2048,
+  "run_inference_eval.gpu_memory_utilization": 0.85
+}

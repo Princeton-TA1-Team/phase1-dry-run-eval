@@ -1,0 +1,15 @@
+{
+  "status": "FALSIFIED",
+  "output": "Assertion does not hold: Got delta_acc=+0.000, expected >= +0.050 (acc_direct=0.500, acc_conditioned=0.500, n_kept_problems=2, regime=2f).",
+  "symbols": {
+    "delta_threshold": 0.05,
+    "delta_acc": 0.0,
+    "acc_direct": 0.5,
+    "acc_conditioned": 0.5,
+    "n_kept_problems": 2,
+    "regime": "2f",
+    "model_config": "Qwen3_8B_NoThinking",
+    "data_path": "data/smoke/aime24/aime24.ds"
+  },
+  "timestamp": "2026-05-23T00:36:09.591899"
+}

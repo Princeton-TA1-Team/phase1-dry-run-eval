@@ -203,11 +203,14 @@ class RunErrorConditioningCLI(scfg.DataConfig):
 def _write_result(results_fpath: Path, cfg, regime: str, *, delta_acc, acc_direct,
                   acc_conditioned, n_kept_problems: int,
                   aggregate_failed: bool, filter_dropped_all: bool) -> None:
+    # magnet's symbol resolver chokes on JSON null values; use -1.0 sentinel.
+    # Claim text gates on aggregate_failed / filter_dropped_all first.
+    _s = -1.0
     payload = {
         "result": {
-            "delta_acc": delta_acc,
-            "acc_direct": acc_direct,
-            "acc_conditioned": acc_conditioned,
+            "delta_acc": _s if delta_acc is None else delta_acc,
+            "acc_direct": _s if acc_direct is None else acc_direct,
+            "acc_conditioned": _s if acc_conditioned is None else acc_conditioned,
             "n_kept_problems": n_kept_problems,
             "regime": regime,
             "aggregate_failed": aggregate_failed,

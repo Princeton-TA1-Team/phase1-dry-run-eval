@@ -1,0 +1,14 @@
+{
+  "drag_experiment.model_config": "Qwen3_8B_NoThinking",
+  "drag_experiment.data_path": "data/smoke/gpqa/gpqa.ds",
+  "drag_experiment.init_template_path": "prompt_templates/init_response_prompt_templates.json",
+  "drag_experiment.init_template_key": "qa_mc_prompt",
+  "drag_experiment.twof_template_path": "prompt_templates/2f_templates.json",
+  "drag_experiment.twof_template_key": "2f",
+  "drag_experiment.max_questions": 8,
+  "drag_experiment.n": 8,
+  "drag_experiment.max_tokens": 8192,
+  "drag_experiment.gpu_memory_utilization": 0.85,
+  "drag_experiment.num_true": 0,
+  "drag_experiment.num_false": 2
+}

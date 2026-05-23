@@ -1,0 +1,74 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.5
+      ],
+      "pass_at_k": [
+        0.5
+      ],
+      "std_maj_at_k": [
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0
+      ],
+      "total_questions": 4,
+      "n_trajectories": 1,
+      "overall_correctness": 0.5
+    },
+    "unknown": {
+      "maj_at_k": [
+        0.5
+      ],
+      "pass_at_k": [
+        0.5
+      ],
+      "std_maj_at_k": [
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0
+      ],
+      "total_questions": 4,
+      "n_trajectories": 1,
+      "overall_correctness": 0.5
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 2,
+  "questions_with_all_incorrect": 2,
+  "questions_with_all_unparsable": 2,
+  "finish_reason_stats": {
+    "stop": 2,
+    "length": 2
+  },
+  "finish_reason_correctness": {
+    "stop": {
+      "correct": 2,
+      "incorrect": 0,
+      "unparsable": 0
+    },
+    "length": {
+      "correct": 0,
+      "incorrect": 0,
+      "unparsable": 2
+    }
+  },
+  "common_incorrect_patterns": {},
+  "sample_unparsable_responses": [
+    {
+      "question_id": "unknown",
+      "ground_truth": "p - q",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, so I need to find a way to express the double sum $\\sum_{j = 1}^\\infty \\sum_{k = 1}^\\infty \\frac{1}{(j + k)^3}$ in terms of $p = \\sum_{k = 1}^\\infty \\frac{1}{k^2}$ and $q = \\sum_{k = 1}^"
+    },
+    {
+      "question_id": "unknown",
+      "ground_truth": "\\frac{14}{3}",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, so I need to find the value of f(-2) + f(-1) + f(0) where the function is given by f(x) = (3x - 2)/(x - 2). Hmm, let me start by recalling how to evaluate a function at a specific value."
+    }
+  ]
+}

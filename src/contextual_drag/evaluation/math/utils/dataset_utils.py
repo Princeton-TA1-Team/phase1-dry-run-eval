@@ -82,8 +82,14 @@ def load_dataset(dataset_dir: str) -> List[Dict[str, Any]]:
                             print(f"Warning: Failed to parse JSON in {file_path}: {e}")
                             continue
     else:
-        # single partition file: dataset.jsonl
-        file_path = list(dataset_path.glob("dataset.jsonl"))[0]
+        # single partition file: prefer completions.jsonl (async inference
+        # driver convention) over dataset.jsonl (legacy upstream convention).
+        candidates = list(dataset_path.glob("completions.jsonl")) or list(dataset_path.glob("dataset.jsonl"))
+        if not candidates:
+            raise FileNotFoundError(
+                f"No completions.jsonl or dataset.jsonl under {dataset_path}"
+            )
+        file_path = candidates[0]
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
                 if line.strip():

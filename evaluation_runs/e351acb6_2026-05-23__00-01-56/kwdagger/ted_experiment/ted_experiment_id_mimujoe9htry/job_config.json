@@ -1,0 +1,16 @@
+{
+  "ted_experiment.model_config": "Qwen3_1.7B_NoThinking",
+  "ted_experiment.data_path": "data/smoke/24-game/24-game.ds",
+  "ted_experiment.init_template_path": "prompt_templates/init_response_prompt_templates.json",
+  "ted_experiment.init_template_key": "qwen_math_prompt",
+  "ted_experiment.twof_template_path": "prompt_templates/2f_templates.json",
+  "ted_experiment.twof_template_key": "2f",
+  "ted_experiment.ted_metric": "tree",
+  "ted_experiment.ted_reduction": "min",
+  "ted_experiment.ted_phase": "2f",
+  "ted_experiment.n_jobs": 4,
+  "ted_experiment.max_questions": 32,
+  "ted_experiment.n": 8,
+  "ted_experiment.max_tokens": 2048,
+  "ted_experiment.gpu_memory_utilization": 0.85
+}

@@ -1,0 +1,9 @@
+{
+  "result": "FALSIFIED",
+  "claim_aggregation_strategy": {
+    "type": "all"
+  },
+  "claims": [
+    "abcb1c1355d5"
+  ]
+}

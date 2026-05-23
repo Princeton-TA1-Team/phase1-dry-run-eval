@@ -1,0 +1,13 @@
+{
+  "result": {
+    "delta_acc": 0.0,
+    "acc_direct": 0.5,
+    "acc_conditioned": 0.5,
+    "n_kept_problems": 2,
+    "regime": "2f",
+    "aggregate_failed": false,
+    "filter_dropped_all": false,
+    "model_config": "Qwen3_8B_NoThinking",
+    "data_path": "data/smoke/aime24/aime24.ds"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "status": "VERIFIED",
+  "output": "Assertion holds",
+  "symbols": {
+    "drag_threshold": 0.05,
+    "acc_clean": 0.53125,
+    "acc_2f": 0.4375,
+    "drag": 0.09375,
+    "n_kept_problems": 4,
+    "model_config": "Qwen3_8B_NoThinking",
+    "data_path": "data/smoke/gpqa/gpqa.ds",
+    "init_template_key": "qa_mc_prompt",
+    "twof_template_key": "2f",
+    "max_questions": 8,
+    "n": 8,
+    "num_true": 0,
+    "num_false": 2
+  },
+  "timestamp": "2026-05-23T00:23:28.908363"
+}

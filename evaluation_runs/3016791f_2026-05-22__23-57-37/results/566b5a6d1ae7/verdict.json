@@ -1,0 +1,20 @@
+{
+  "status": "INCONCLUSIVE",
+  "output": "ERROR evaluating claim: Inconclusive: aggregation produced 0 problems with the configured filter — increase --n or --max_questions, or pick a benchmark in the model's ambiguous zone (gpqa works for Qwen3_8B; math500 too easy, aime24 too hard at small samples).",
+  "symbols": {
+    "drag_threshold": 0.05,
+    "acc_clean": -1.0,
+    "acc_2f": -1.0,
+    "drag": -1.0,
+    "n_kept_problems": 0,
+    "model_config": "Qwen3_1.7B_NoThinking",
+    "data_path": "data/smoke/gpqa/gpqa.ds",
+    "init_template_key": "qa_mc_prompt",
+    "twof_template_key": "2f",
+    "max_questions": 8,
+    "n": 8,
+    "num_true": 0,
+    "num_false": 2
+  },
+  "timestamp": "2026-05-22T23:58:48.756727"
+}

@@ -220,15 +220,20 @@ class RunMitigationExperimentCLI(scfg.DataConfig):
 
 def _write_result(results_fpath: Path, cfg, *, derived: dict | None,
                   n_observations: int, aggregate_failed: bool) -> None:
+    # magnet's symbol resolver chokes on JSON null values; use -1.0 sentinel.
     d = derived or {}
+    _s = -1.0
+    def _f(k):
+        v = d.get(k)
+        return _s if v is None else float(v)
     payload = {
         "result": {
-            "recovery_rate":      d.get("recovery_rate"),
-            "iatrogenic_rate":    d.get("iatrogenic_rate"),
-            "new_gain_rate":      d.get("new_gain_rate"),
-            "preservation_rate":  d.get("preservation_rate"),
-            "net_vs_1f":          d.get("net_vs_1f"),
-            "net_vs_direct":      d.get("net_vs_direct"),
+            "recovery_rate":      _f("recovery_rate"),
+            "iatrogenic_rate":    _f("iatrogenic_rate"),
+            "new_gain_rate":      _f("new_gain_rate"),
+            "preservation_rate":  _f("preservation_rate"),
+            "net_vs_1f":          _f("net_vs_1f"),
+            "net_vs_direct":      _f("net_vs_direct"),
             "drag_failed_den":    int(d.get("drag_failed_den") or 0),
             "drag_kept_den":      int(d.get("drag_kept_den") or 0),
             "recoverable_drag":   _safe_int(d, "recoverable_drag"),

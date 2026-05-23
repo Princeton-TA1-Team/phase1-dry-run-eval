@@ -1,0 +1,172 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.0
+    },
+    "gpqa": {
+      "maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.0
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 64,
+  "questions_with_all_incorrect": 8,
+  "questions_with_all_unparsable": 8,
+  "finish_reason_stats": {
+    "length": 64
+  },
+  "finish_reason_correctness": {
+    "length": {
+      "correct": 0,
+      "incorrect": 0,
+      "unparsable": 64
+    }
+  },
+  "common_incorrect_patterns": {},
+  "sample_unparsable_responses": [
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is about density, which is mass divided by volume. So, the key here is to compar"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is asking about density, which is mass divided by volume. So, I need to compare "
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 2,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is asking about density, which is mass divided by volume. So, I need to compare "
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 3,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is about density, which is mass divided by volume. So, I need to compare the mas"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 4,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is about density, which is mass divided by volume. So, I need to compare the mas"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 5,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is asking about density, which is mass divided by volume. So, the key here is to"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 6,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is about density, which is mass divided by volume. So, I need to compare the mas"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 7,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density among the options given. So, the question is asking about density, which is mass divided by volume. So, I need to compare "
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "C",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's try to figure out this question. So, the problem is about observing structures at a distance of about 2.1 gigaparsecs (Gpc) and detecting an absorption line with an energy equivale"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "C",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, let's try to figure out this question. So, the problem is about observing structures at a distance of about 2.1 gigaparsecs (Gpc) and detecting an absorption line with an energy equivale"
+    }
+  ]
+}

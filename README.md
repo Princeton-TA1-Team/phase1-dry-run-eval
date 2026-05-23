@@ -23,18 +23,20 @@ The package wraps an async vLLM inference driver, a resumable per-row evaluator,
 
 ```bash
 git clone --recurse-submodules <url> && cd AIQ-Contextual-Drag
-mamba env create -f env/environment-ica.yml
-mamba activate aiq-cdrag
-pip install -e ./submodules/aiq-magnet
-pip install -e .[all]
+bash scripts/install.sh                          # one-shot: conda env + editable installs of aiq-magnet + contextual_drag
+conda activate phase1-dry-run-eval
 python -m magnet.evaluation cards/contextual_drag_smoke.yaml
 ```
 
-Use `env/environment-ica-new.yml` (and `mamba activate aiq-cdrag-new`) for the Gemma3 / Qwen3.5 model families, which need vLLM 0.19.
+`scripts/install.sh` runs `conda env create -f env/environment-ica.yml` and then installs `submodules/aiq-magnet` and the local package via `conda run -n phase1-dry-run-eval pip install -e ...`. The two-step split is intentional: conda dumps the env-yml pip block to `/tmp/condaenv.XXX.requirements.txt` and pip resolves editable paths relative to that file's directory, not your CWD, so embedding `--editable ./submodules/aiq-magnet` directly in `environment-ica.yml` silently breaks. Use `ICA_NEW=1 bash scripts/install.sh` for the vLLM-0.19 environment.
+
+Use `env/environment-ica-new.yml` (and `conda activate phase1-dry-run-eval-new`) for the model families that need vLLM 0.19.
 
 ## Running the cards
 
 Each command is run from the repo root on a host with one 24 GB GPU already allocated. Symbol thresholds and target values reflect the Qwen3_8B_NoThinking defaults baked into each card; algo params (model, task, sample count, threshold) are sweepable via magnet.
+
+The "last verified" numbers below come from a clean smoke run on an H100 (80 GB) with `Qwen3_8B_NoThinking`, `max_tokens=8192`, `context_length=32768`, and the card's stock default algo params.
 
 ### Wiring smoke
 
@@ -44,6 +46,7 @@ python -m magnet.evaluation cards/contextual_drag_smoke.yaml
 
 - PASS: `accuracy ≥ min_accuracy` (default 0.25; typical ≥ 0.75 for Qwen3_8B_NoThinking on math500).
 - Purpose: prove the magnet ↔ contextual_drag plumbing end-to-end. Not a scientific claim.
+- **Last verified**: `VERIFIED`, accuracy = 0.5 on 4 math500 problems × n=1.
 
 ### §2 baseline drag
 
@@ -51,8 +54,9 @@ python -m magnet.evaluation cards/contextual_drag_smoke.yaml
 python -m magnet.evaluation cards/contextual_drag.yaml
 ```
 
-- PASS: `drag ≥ drag_threshold` (default 0.05). Typical measured drag on gpqa: +0.20 to +0.45.
-- INCONCLUSIVE: `aggregate_failed: true`, `drag: null` — the `≥ num_false` failed-trajectory filter produced no problems. Increase `n` or pick a model whose pass@k on the chosen task sits in the ambiguous zone.
+- PASS: `drag ≥ drag_threshold` (default 0.05). Typical measured drag on gpqa: +0.10 to +0.45 depending on which problems land in the aggregate-filtered cohort.
+- INCONCLUSIVE: `aggregate_failed: true` — the `≥ num_false` failed-trajectory filter produced no problems. Increase `n` or pick a model whose pass@k on the chosen task sits in the ambiguous zone.
+- **Last verified**: `VERIFIED`, drag = +0.094 (acc_clean = 0.531, acc_2f = 0.438), n_kept = 4 on gpqa × 8 problems × n=8.
 
 ### §3 error-conditioning
 
@@ -60,8 +64,9 @@ python -m magnet.evaluation cards/contextual_drag.yaml
 python -m magnet.evaluation cards/contextual_drag_error_conditioning.yaml
 ```
 
-- PASS: `delta_acc ≥ delta_threshold` (default 0.05). Target on aime24 × Qwen3_8B × regime `2f`: ≈ +0.22.
-- INCONCLUSIVE: `filter_dropped_all: true` — the regime-specific verdict filter (`<overall_verdict>incorrect</overall_verdict>` for 1f/2f) rejected every conditioned response. Switch `regime` to `framing` (no verdict filter).
+- PASS: `delta_acc ≥ delta_threshold` (default 0.05). Target on aime24 × Qwen3_8B × regime `2f` at full sample sizes: ≈ +0.22.
+- INCONCLUSIVE: `aggregate_failed: true` or `filter_dropped_all: true` — `data aggregate` returned 0 problems, or the regime-specific verdict filter (`<overall_verdict>incorrect</overall_verdict>` for 1f/2f) rejected every conditioned response. Switch `regime` to `framing` (no verdict filter), or increase `n` / `max_questions`.
+- **Last verified**: pipeline-functional end-to-end, but `FALSIFIED` on the stock smoke slice — delta_acc = 0.0 (acc_direct = 0.5, acc_conditioned = 0.5) with only n_kept = 2 problems surviving the 2F aggregate + verdict filter on a 16-problem × n=4 aime24 slice. The pipeline correctly refuses to verify when the kept cohort is this thin; bump `n` to 8 or use the framing regime to drive the claim past threshold.
 
 ### §4 mitigation
 
@@ -88,7 +93,7 @@ AIQ-Contextual-Drag/
 ├── pyproject.toml                 # extras: [inference, eval, analysis, magnet, dev, all]
 ├── env/
 │   ├── environment-ica.yml        # vllm 0.10.2 / torch 2.8.0  (old + sft + rl families)
-│   └── environment-ica-new.yml    # vllm 0.19.1                (Gemma3, Qwen3.5)
+│   └── environment-ica-new.yml    # vllm 0.19.1                (newer model families)
 ├── src/contextual_drag/
 │   ├── cli.py                     # top-level scriptconfig.ModalCLI
 │   ├── inference/                 # async vLLM driver, per-cell, prompt-hash JSONL resume
@@ -122,7 +127,7 @@ AIQ-Contextual-Drag/
 ```
 contextual-drag
 ├── inference      run | dry-run | list-models
-├── eval           math | crux
+├── eval           math | crux | game_of_24
 ├── data           initial-sampling-postprocess | minimal-aggregate-flatten |
 │                  aggregate | aggregate-crux | aggregate-iterative |
 │                  stage1-postprocess-iterative
@@ -167,10 +172,16 @@ Two conda environments cover all model families:
 
 | Env | vLLM | Use for |
 |---|---|---|
-| `aiq-cdrag` (`env/environment-ica.yml`) | 0.10.2 | GPT-OSS, Nemotron, Qwen3, R1-Distill, Llama3.1, SFT, GRPO |
-| `aiq-cdrag-new` (`env/environment-ica-new.yml`) | 0.19.1 | Gemma3, Qwen3.5 |
+| `phase1-dry-run-eval` (`env/environment-ica.yml`) | 0.10.2 | GPT-OSS, Nemotron, Qwen3, R1-Distill, Llama3.1, SFT, GRPO |
+| `phase1-dry-run-eval-new` (`env/environment-ica-new.yml`) | 0.19.1 | newer model families |
 
 Both environments install the same `contextual_drag` package via `pip install -e .[all]` plus the `aiq-magnet` submodule via `pip install -e ./submodules/aiq-magnet`.
+
+## TODO
+
+- **Verify §3 error-conditioning at a larger sample size.** The stock smoke slice (aime24 × 16 problems × n=4) was `FALSIFIED` with only n_kept = 2 surviving the 2F aggregate + verdict filter. Re-run at `n=8` or `max_questions=32` (or with `regime=framing` to bypass the verdict filter) and update the "Last verified" line under §3 once the claim crosses threshold.
+- **Verify TED structural drag.** The TED card was skipped in the v0 smoke run. Run `cards/contextual_drag_ted.yaml` end-to-end on 24-game × Qwen3_8B × phase=2f and add a "Last verified" line under "TED structural drag" with the measured `ted_drag` and `n_kept_problems`.
+- **Add a `max_tokens` / `context_length` toggle.** Today `max_tokens` in each card is the generation-only budget while `context_length` is the prompt + generation cap on `Qwen3_8B_NoThinking`. Add a card-level switch (e.g. `max_tokens_mode: {rollout_budget | model_max}`) so a card can request "use the model's full advertised context window" (32768 for Qwen3) vs. "cap generation at this rollout token budget" without editing `eval_models_params.json`. When the toggle lands, re-run §2, §3, and TED under the `rollout_budget` setting and refresh the "Last verified" numbers — current results were taken under the model-max-context regime.
 
 ## Citation
 

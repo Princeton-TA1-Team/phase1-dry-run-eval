@@ -1,0 +1,2 @@
+[console_scripts]
+contextual-drag = contextual_drag.cli:main

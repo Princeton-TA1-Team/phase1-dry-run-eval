@@ -13,7 +13,6 @@ class EvalMathCLI(scfg.DataConfig):
     flatten_dataset = scfg.Value(False, isflag=True, help="Save flattened evaluation output.")
     answer_column = scfg.Value("answer", help="Answer column name.")
     response_column = scfg.Value("init_response_generations", help="Response column name.")
-    equivalent_parser = scfg.Value("math_verify", help="Verification backend.")
     data_format = scfg.Value(
         "general_inference",
         choices=["general_inference", "openai_api", "gemini_api"],

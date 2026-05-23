@@ -1,0 +1,172 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.0
+    },
+    "gpqa": {
+      "maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_maj_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "std_pass_at_k": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.0
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 64,
+  "questions_with_all_incorrect": 8,
+  "questions_with_all_unparsable": 8,
+  "finish_reason_stats": {
+    "length": 64
+  },
+  "finish_reason_correctness": {
+    "length": {
+      "correct": 0,
+      "incorrect": 0,
+      "unparsable": 64
+    }
+  },
+  "common_incorrect_patterns": {},
+  "sample_unparsable_responses": [
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density. The question gives four options, and I need to compare their densities. Let me start by recalling what density means. Den"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, so I need to figure out which exoplanet has the highest density among the options given. Let me start by recalling what density means. Density is mass divided by volume, right? So, ρ = M"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 2,
+      "response_text": "<think>\nOkay, so I need to figure out which exoplanet has the highest density among the options given. Let me start by recalling what density means. Density is mass divided by volume, right? So, densi"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 3,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density. The question gives four options, and I need to compare their densities. Let me start by recalling what density is. Densit"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 4,
+      "response_text": "<think>\nOkay, so I need to figure out which exoplanet has the highest density among the options given. Let me start by recalling what density means. Density is mass divided by volume, right? So, densi"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 5,
+      "response_text": "<think>\nOkay, so I need to figure out which exoplanet has the highest density among the options given. Let me start by recalling what density means. Density is mass divided by volume, right? So, densi"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 6,
+      "response_text": "<think>\nOkay, let's try to figure out which exoplanet has the highest density. The question gives four options, and I need to compare their densities. Let me start by recalling what density means. Den"
+    },
+    {
+      "question_id": "0",
+      "ground_truth": "D",
+      "response_id": 7,
+      "response_text": "<think>\nOkay, so I need to figure out which exoplanet has the highest density among the options given. Let me start by recalling what density means. Density is mass divided by volume, right? So, densi"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "C",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's try to figure out this question. So, the problem is about absorption lines observed at a distance of 2.1 gigaparsecs, which is really far—like, way beyond our galaxy, maybe even in"
+    },
+    {
+      "question_id": "1",
+      "ground_truth": "C",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, so I need to figure out which interstellar medium (ISM) component is most likely responsible for the observed absorption line with an energy equivalent of 3.9 micro electron volts in the"
+    }
+  ]
+}

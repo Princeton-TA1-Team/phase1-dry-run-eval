@@ -1,0 +1,64 @@
+title: "Contextual Drag TED \u2014 anchored answers cluster toward failed context\
+  \ drafts"
+description: "Tests whether the model's 2F-conditioned answers (when prompted with\n\
+  two failed trajectories in context) cluster significantly closer \u2014\nin tree-edit-distance\
+  \ over LaTeX expressions \u2014 to the trajectories'\nextracted answers than the\
+  \ model's direct-baseline answers do.\n\nSubprocess chain (per cell, single GPU):\n\
+  \  inference run    (direct, clean prompt, task_name=init_response)\n    \u2192\
+  \ eval math --flatten_dataset\n    \u2192 data initial-sampling-postprocess\n  \
+  \  \u2192 data aggregate -T 0 -F 2\n    \u2192 inference run (2F, 2f template, task_name=init_response)\n\
+  \    \u2192 eval math --flatten_dataset\n    \u2192 contextual_drag analysis ted\
+  \ build_cache\n          --phase 2f --anchored_jsonl <2F evaluated_*.jsonl>\n  \
+  \        --init_jsonl <direct evaluated_*_flattened.jsonl>\n          --metric tree\
+  \ --n_jobs 4 --cache_out cache.json\n    \u2192 contextual_drag analysis ted summarize\n\
+  \          --cache_in cache.json --metric tree --reduction min\n          --out\
+  \ summary.json\n    \u2192 load summary; ted_drag = init_response \u2212 anchored_responses\n\
+  \nReplicates the TED finding of \"Contextual Drag\" (Cheng et al., 2026)\non a small\
+  \ slice runnable on a single 24 GB GPU.\n"
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- contextual-drag
+- ted
+- tree-edit-distance
+- reasoning
+claim:
+  python: "if aggregate_failed:\n  raise Exception(\n      \"Inconclusive: data aggregate\
+    \ produced 0 problems \u2014 increase \"\n      \"--n or pick a benchmark in the\
+    \ model's ambiguous zone.\"\n  )\nif n_kept_problems == 0:\n  raise Exception(\n\
+    \      \"Inconclusive: no problem survived the TED filter \"\n      \"(finish_reason=='stop'\
+    \ + parseable extracted answer on both \"\n      \"anchored and direct sides).\"\
+    \n  )\nif ted_drag is None:\n  raise Exception(\n      \"Inconclusive: ted_drag\
+    \ is null (one of mean_TED sides is null).\"\n  )\nassert ted_drag >= ted_threshold,\
+    \ (\n    f\"Got ted_drag={ted_drag:+.3f}, expected >= {ted_threshold:+.3f} \"\n\
+    \    f\"(mean_TED_direct={mean_ted_direct:.3f}, \"\n    f\"mean_TED_2f={mean_ted_2f:.3f},\
+    \ \"\n    f\"n_kept_problems={n_kept_problems}, metric={ted_metric}, \"\n    f\"\
+    phase={ted_phase}).\"\n)\n"
+pipeline:
+  ted_experiment:
+    executable: python -m cards.nodes.run_ted_experiment
+    algo_params:
+      model_config: Qwen3_1.7B_NoThinking
+      data_path: data/smoke/24-game/24-game.ds
+      init_template_path: prompt_templates/init_response_prompt_templates.json
+      init_template_key: qwen_math_prompt
+      twof_template_path: prompt_templates/2f_templates.json
+      twof_template_key: 2f
+      ted_metric: tree
+      ted_reduction: min
+      ted_phase: 2f
+      n_jobs: 4
+      max_questions: 32
+      n: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: results.json
+symbols:
+  ted_threshold:
+    type: float
+    value: 1.0

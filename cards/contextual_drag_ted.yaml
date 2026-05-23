@@ -84,7 +84,7 @@ pipeline:
     executable: 'python -m cards.nodes.run_ted_experiment'
     algo_params:
       model_config: 'Qwen3_8B_NoThinking'
-      data_path: 'data/24-game/24-game.ds'
+      data_path: 'data/smoke/24-game/24-game.ds'
       init_template_path: 'prompt_templates/init_response_prompt_templates.json'
       init_template_key: 'qwen_math_prompt'
       twof_template_path: 'prompt_templates/2f_templates.json'
@@ -95,7 +95,7 @@ pipeline:
       n_jobs: 4
       max_questions: 32
       n: 8
-      max_tokens: 2048
+      max_tokens: 8192
       gpu_memory_utilization: 0.85
     out_paths:
       results_fpath: 'results.json'

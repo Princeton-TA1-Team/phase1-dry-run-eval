@@ -1,0 +1,43 @@
+title: "Contextual Drag \u2014 pipeline wiring smoke"
+description: 'Sanity check that the contextual_drag CLI is reachable from a magnet
+
+  evaluation card pipeline. Runs `inference run` and `eval math` on a
+
+  small slice of math500 with Qwen3_8B_NoThinking and asserts that
+
+  overall accuracy is at least `min_accuracy` (default 0.25, i.e. better
+
+  than random across the four random samples drawn).
+
+  '
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- smoke
+- contextual-drag
+- wiring
+claim:
+  python: "assert accuracy >= min_accuracy, (\n    f\"Got accuracy={accuracy:.3f},\
+    \ expected >= {min_accuracy:.3f}; \"\n    \"wiring or model regression.\"\n)\n"
+pipeline:
+  run_inference_eval:
+    executable: python -m cards.nodes.run_inference_eval
+    algo_params:
+      model_config: Qwen3_1.7B_NoThinking
+      data_path: data/smoke/math500/math500.ds
+      prompt_template_path: prompt_templates/init_response_prompt_templates.json
+      prompt_template_key: qwen_math_prompt
+      max_questions: 4
+      n: 1
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: results.json
+symbols:
+  min_accuracy:
+    type: float
+    value: 0.25

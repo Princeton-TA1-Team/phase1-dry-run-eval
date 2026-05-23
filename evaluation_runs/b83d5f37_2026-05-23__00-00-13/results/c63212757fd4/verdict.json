@@ -1,0 +1,15 @@
+{
+  "status": "INCONCLUSIVE",
+  "output": "ERROR evaluating claim: Inconclusive: data aggregate produced 0 problems — increase --n or pick a benchmark in the model's ambiguous zone (aime24 works for Qwen3_8B; math500 too easy, gpqa too noisy).",
+  "symbols": {
+    "delta_threshold": 0.05,
+    "delta_acc": -1.0,
+    "acc_direct": -1.0,
+    "acc_conditioned": -1.0,
+    "n_kept_problems": 0,
+    "regime": "2f",
+    "model_config": "Qwen3_1.7B_NoThinking",
+    "data_path": "data/smoke/aime24/aime24.ds"
+  },
+  "timestamp": "2026-05-23T00:01:27.865802"
+}

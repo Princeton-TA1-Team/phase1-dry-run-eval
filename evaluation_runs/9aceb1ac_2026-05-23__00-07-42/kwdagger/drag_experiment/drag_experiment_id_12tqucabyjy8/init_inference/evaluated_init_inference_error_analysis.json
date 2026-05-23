@@ -1,0 +1,181 @@
+{
+  "pass_at_k_by_source": {
+    "overall": {
+      "maj_at_k": [
+        0.4375,
+        0.5,
+        0.453125,
+        0.46875,
+        0.4375,
+        0.5,
+        0.4375,
+        0.4375
+      ],
+      "pass_at_k": [
+        0.4375,
+        0.5625,
+        0.609375,
+        0.625,
+        0.625,
+        0.625,
+        0.625,
+        0.625
+      ],
+      "std_maj_at_k": [
+        0.08838834764831845,
+        0.08838834764831845,
+        0.08699631816921909,
+        0.10364452469860624,
+        0.0625,
+        0.08838834764831845,
+        0.0625,
+        0.0625
+      ],
+      "std_pass_at_k": [
+        0.08838834764831845,
+        0.08838834764831845,
+        0.04133986423538423,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.4375
+    },
+    "gpqa": {
+      "maj_at_k": [
+        0.4375,
+        0.5,
+        0.453125,
+        0.46875,
+        0.4375,
+        0.5,
+        0.4375,
+        0.4375
+      ],
+      "pass_at_k": [
+        0.4375,
+        0.5625,
+        0.609375,
+        0.625,
+        0.625,
+        0.625,
+        0.625,
+        0.625
+      ],
+      "std_maj_at_k": [
+        0.08838834764831845,
+        0.08838834764831845,
+        0.08699631816921909,
+        0.10364452469860624,
+        0.0625,
+        0.08838834764831845,
+        0.0625,
+        0.0625
+      ],
+      "std_pass_at_k": [
+        0.08838834764831845,
+        0.08838834764831845,
+        0.04133986423538423,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_questions": 8,
+      "n_trajectories": 8,
+      "overall_correctness": 0.4375
+    }
+  },
+  "overall_stats": {},
+  "sample_incorrect_answers": [],
+  "unparsable_responses_count": 34,
+  "questions_with_all_incorrect": 3,
+  "questions_with_all_unparsable": 1,
+  "finish_reason_stats": {
+    "stop": 25,
+    "length": 39
+  },
+  "finish_reason_correctness": {
+    "stop": {
+      "correct": 25,
+      "incorrect": 0,
+      "unparsable": 0
+    },
+    "length": {
+      "correct": 3,
+      "incorrect": 2,
+      "unparsable": 34
+    }
+  },
+  "common_incorrect_patterns": {
+    "14.99": 1,
+    "D": 1
+  },
+  "sample_unparsable_responses": [
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, let's tackle this problem step by step. So, the question is about determining which stars can be detected by both the ESPRESSO spectrograph at Paranal Observatory and the HIRES spectrogr"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 1,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me br"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 2,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me st"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 4,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me st"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 5,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me st"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 6,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me st"
+    },
+    {
+      "question_id": "6",
+      "ground_truth": "C",
+      "response_id": 7,
+      "response_text": "<think>\nOkay, let's try to figure out which stars can be detected by both ESPRESSO and HIRES. The question gives some details about the observatories' capabilities and the stars' properties. Let me br"
+    },
+    {
+      "question_id": "4",
+      "ground_truth": "C",
+      "response_id": 0,
+      "response_text": "<think>\nOkay, so I need to find the ratio of the equilibrium temperatures between Planet1 and Planet2. Both planets are orbiting the same star, and they have different masses and radii. The question m"
+    },
+    {
+      "question_id": "4",
+      "ground_truth": "C",
+      "response_id": 2,
+      "response_text": "<think>\nOkay, so I need to find the ratio of the equilibrium temperatures between Planet1 and Planet2. Both planets are orbiting the same star, which has a mass of 1.5 solar masses, radius 1.2 solar r"
+    },
+    {
+      "question_id": "4",
+      "ground_truth": "C",
+      "response_id": 3,
+      "response_text": "<think>\nOkay, so I need to find the ratio of the equilibrium temperatures between Planet1 and Planet2. Both planets are orbiting the same star, which has a mass of 1.5 solar masses, radius 1.2 solar r"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "error_conditioning.model_config": "Qwen3_8B_NoThinking",
+  "error_conditioning.data_path": "data/smoke/aime24/aime24.ds",
+  "error_conditioning.regime": "2f",
+  "error_conditioning.init_template_path": "prompt_templates/init_response_prompt_templates.json",
+  "error_conditioning.init_template_key": "qwen_math_prompt",
+  "error_conditioning.cond_template_path_1f": "prompt_templates/1f_templates.json",
+  "error_conditioning.cond_template_key_1f": "1f",
+  "error_conditioning.cond_template_path_2f": "prompt_templates/2f_templates.json",
+  "error_conditioning.cond_template_key_2f": "2f",
+  "error_conditioning.max_questions": 16,
+  "error_conditioning.n": 8,
+  "error_conditioning.max_tokens": 8192,
+  "error_conditioning.gpu_memory_utilization": 0.85
+}

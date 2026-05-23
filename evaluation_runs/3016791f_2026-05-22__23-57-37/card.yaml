@@ -1,0 +1,51 @@
+title: "Contextual Drag \u2014 failed reasoning in context degrades accuracy"
+description: "Tests whether injecting two of the model's own previously-failed reasoning\n\
+  trajectories into its prompt context degrades subsequent accuracy on the\nsame problems.\
+  \ Runs `inference run` with the clean prompt template, labels\ntrajectories via\
+  \ `eval math`, builds a 2F-augmented dataset using\n`data aggregate`, runs `inference\
+  \ run` again with the 2F template, and\nmeasures `drag = acc_clean \u2212 acc_2f`\
+  \ on the problems that survived\naggregation. Claim is `drag \u2265 drag_threshold`.\n\
+  \nReplicates the qualitative finding of \"Contextual Drag: How Errors in the\nContext\
+  \ Affect LLM Reasoning\" (Cheng et al., 2026) on a small slice\nrunnable on consumer\
+  \ GPUs.\n"
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- contextual-drag
+- reasoning
+- in-context-learning
+claim:
+  python: "if aggregate_failed:\n  raise Exception(\n      \"Inconclusive: \"\n  \
+    \    \"aggregation produced 0 problems with the configured filter \u2014 \"\n\
+    \      \"increase --n or --max_questions, or pick a benchmark in the \"\n    \
+    \  \"model's ambiguous zone (gpqa works for Qwen3_8B; math500 too \"\n      \"\
+    easy, aime24 too hard at small samples).\"\n  )\nassert drag >= drag_threshold,\
+    \ (\n    f\"Got drag={drag:+.3f}, expected >= {drag_threshold:+.3f} \"\n    f\"\
+    (acc_clean={acc_clean:.3f}, acc_2f={acc_2f:.3f}, \"\n    f\"n_kept_problems={n_kept_problems}).\"\
+    \n)\n"
+pipeline:
+  drag_experiment:
+    executable: python -m cards.nodes.run_drag_experiment
+    algo_params:
+      model_config: Qwen3_1.7B_NoThinking
+      data_path: data/smoke/gpqa/gpqa.ds
+      init_template_path: prompt_templates/init_response_prompt_templates.json
+      init_template_key: qa_mc_prompt
+      twof_template_path: prompt_templates/2f_templates.json
+      twof_template_key: 2f
+      max_questions: 8
+      n: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+      num_true: 0
+      num_false: 2
+    out_paths:
+      results_fpath: results.json
+symbols:
+  drag_threshold:
+    type: float
+    value: 0.05

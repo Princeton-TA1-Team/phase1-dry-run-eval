@@ -1,0 +1,14 @@
+{
+  "status": "VERIFIED",
+  "output": "Assertion holds",
+  "symbols": {
+    "min_accuracy": 0.25,
+    "accuracy": 0.5,
+    "total_questions": 4,
+    "n_trajectories": 1,
+    "model_config": "Qwen3_1.7B_NoThinking",
+    "data_path": "data/smoke/math500/math500.ds",
+    "prompt_template_key": "qwen_math_prompt"
+  },
+  "timestamp": "2026-05-22T23:52:57.098153"
+}

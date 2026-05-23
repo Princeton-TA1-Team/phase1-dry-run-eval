@@ -1,0 +1,61 @@
+title: "Contextual Drag \xA73 \u2014 error conditioning degrades follow-up accuracy"
+description: "Tests whether prompting the model with its own failed reasoning\ntrajectories\
+  \ \u2014 and explicitly asking it to re-attempt the problem \u2014\nproduces a lower-accuracy\
+  \ answer than asking the same model to\nattempt the problem from scratch (the \"\
+  direct\" baseline). The\ndifference is restricted to (problem, conditioning) samples\
+  \ whose\nembedded verification verdict is parseable, so the metric is\napples-to-apples\
+  \ within the verdict-filtered cohort.\n\nSubprocess chain (per cell, single GPU):\n\
+  \  inference run    (direct, clean prompt)\n    \u2192 eval math --flatten_dataset\n\
+  \    \u2192 data initial-sampling-postprocess\n    \u2192 data aggregate -T 0 -F\
+  \ {1 if regime==1f else 2}\n    \u2192 inference run (conditioned, regime-specific\
+  \ template)\n    \u2192 eval math (default --response_column init_response_generations)\n\
+  \    \u2192 contextual_drag analysis error_conditioning run\n          --setting\
+  \ <regime> --cond_jsonl ... --direct_jsonl ...\n          --out summary.json\n \
+  \   \u2192 load summary; delta_acc = acc_direct \u2212 acc_conditioned\n\nReplicates\
+  \ \xA73 of \"Contextual Drag\" (Cheng et al., 2026) on a small\nslice runnable on\
+  \ a single 24 GB GPU.\n"
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- contextual-drag
+- error-conditioning
+- reasoning
+claim:
+  python: "if aggregate_failed:\n  raise Exception(\n      \"Inconclusive: data aggregate\
+    \ produced 0 problems \u2014 increase \"\n      \"--n or pick a benchmark in the\
+    \ model's ambiguous zone \"\n      \"(aime24 works for Qwen3_8B; math500 too easy,\
+    \ gpqa too noisy).\"\n  )\nif filter_dropped_all:\n  raise Exception(\n      \"\
+    Inconclusive: the verdict filter dropped every conditioned \"\n      \"response.\
+    \ Increase --n or relax the verdict requirement.\"\n  )\nif delta_acc is None:\n\
+    \  raise Exception(\n      \"Inconclusive: delta_acc is null (no overlap between\
+    \ direct \"\n      \"and conditioned cohorts).\"\n  )\nassert delta_acc >= delta_threshold,\
+    \ (\n    f\"Got delta_acc={delta_acc:+.3f}, expected >= {delta_threshold:+.3f}\
+    \ \"\n    f\"(acc_direct={acc_direct:.3f}, acc_conditioned={acc_conditioned:.3f},\
+    \ \"\n    f\"n_kept_problems={n_kept_problems}, regime={regime}).\"\n)\n"
+pipeline:
+  error_conditioning:
+    executable: python -m cards.nodes.run_error_conditioning
+    algo_params:
+      model_config: Qwen3_1.7B_NoThinking
+      data_path: data/smoke/aime24/aime24.ds
+      regime: 2f
+      init_template_path: prompt_templates/init_response_prompt_templates.json
+      init_template_key: qwen_math_prompt
+      cond_template_path_1f: prompt_templates/1f_templates.json
+      cond_template_key_1f: 1f
+      cond_template_path_2f: prompt_templates/2f_templates.json
+      cond_template_key_2f: 2f
+      max_questions: 16
+      n: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: results.json
+symbols:
+  delta_threshold:
+    type: float
+    value: 0.05
