@@ -1,0 +1,53 @@
+name: aiq-cdrag
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      # Core inference + eval stack pinned to parent repo's requirements.txt.
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - torchaudio==2.8.0
+      - vllm==0.10.2
+      - transformers==4.55.4
+      - accelerate==1.10.1
+      - datasets==4.0.0
+      - tokenizers==0.21.4
+      - tiktoken==0.11.0
+      - math-verify==0.8.0
+      - Levenshtein==0.27.3
+      - python-Levenshtein==0.27.3
+      - zss==1.2.0
+      - networkx==3.5
+      - matplotlib==3.10.5
+      - seaborn==0.13.2
+      - sympy==1.14.0
+      - joblib==1.5.1
+      - numpy==2.2.6
+      - pandas==2.3.3
+      - tqdm==4.67.1
+      - pyyaml==6.0.2
+      - scriptconfig>=0.8.4
+      # aiq-magnet runtime deps (matches aiq-magnet/pyproject.toml).
+      - crfm-helm>=0.5.8
+      - dacite>=1.9.2
+      - fsspec>=2024.9
+      - h5py>=3.14
+      - kwarray>=0.7.1
+      - kwdagger>=0.2.3
+      - kwutil>=0.3.8
+      - lazy-loader>=0.4
+      - loguru>=0.7.3
+      - msgspec>=0.19
+      - numexpr>=2.11
+      - orjson>=3.10.15
+      - pygtrie>=2.5
+      - rich>=14.1
+      - ruamel-yaml>=0.17.22
+      - safer>=2024.1
+      - scikit-learn>=1.7.1
+      - ubelt>=1.3.8
+      # Editable installs (run inside this env after `mamba env create`):
+      #   pip install -e ./submodules/aiq-magnet
+      #   pip install -e .[all]

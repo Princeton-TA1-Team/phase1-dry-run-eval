@@ -1,0 +1,60 @@
+# Contextual Drag — wiring-smoke card.
+#
+# This is *not* the contextual-drag scientific claim. It's a minimal
+# end-to-end exercise of the magnet ↔ contextual_drag pipeline:
+#   1 inference node + eval + summarize, claim that the model gets at
+# least one math500 problem right when prompted with the canonical
+# `qwen_math_prompt`. VERIFIED tells us the wiring is correct.
+#
+# The real drag claim (`acc_clean - acc_2f >= delta`) is a follow-up card
+# that will reuse most of this scaffolding plus a `data aggregate` node.
+
+title: "Contextual Drag — pipeline wiring smoke"
+
+description: |
+  Sanity check that the contextual_drag CLI is reachable from a magnet
+  evaluation card pipeline. Runs `inference run` and `eval math` on a
+  small slice of math500 with Qwen3_8B_NoThinking and asserts that
+  overall accuracy is at least `min_accuracy` (default 0.25, i.e. better
+  than random across the four random samples drawn).
+
+version: 0.1
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+
+tags:
+  - smoke
+  - contextual-drag
+  - wiring
+
+claim:
+  python: |
+    assert accuracy >= min_accuracy, (
+        f"Got accuracy={accuracy:.3f}, expected >= {min_accuracy:.3f}; "
+        "wiring or model regression."
+    )
+
+pipeline:
+  run_inference_eval:
+    executable: 'python -m cards.nodes.run_inference_eval'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/math500/math500.ds'
+      prompt_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      prompt_template_key: 'qwen_math_prompt'
+      max_questions: 4
+      n: 1
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: 'results.json'
+
+symbols:
+  min_accuracy:
+    type: float
+    value: 0.25

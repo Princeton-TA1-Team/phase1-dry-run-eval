@@ -1,0 +1,6 @@
+{
+    "qwen_math_prompt": "{arg_problem} Let's think step by step and please wrap your final answer in \\boxed{}.",
+    "stepwise_verification_template_v2": "Decompose the following draft math solution into key steps and evaluate each step individually. For each step, restate it concisely and output in the following structured natural language format:\n\n### Step 1: [Concise restatement]\n- **Check:** [What is being verified]\n- **Verdict:** Correct / Incorrect / Unclear\n- **Justification:** [Brief reason, citing rule/theorem if relevant]\n- **Fix (if needed):** [Minimal correction or \"None\"]\n- **Impact:** Fatal / Major / Minor\n\nAfter all steps, also provide:\n\n### Missing or Skipped Steps\n[List any essential steps omitted.]\n\n### Overall Verdict\nCorrect / Partially correct / Incorrect\n\n### Most Critical Issue\n[Short description or \"None\"]\n\n### Confidence\nHigh / Medium / Low\n\nBe strict with algebra, logic, and theorem use. Suggest minimal fixes rather than re-solving the problem. If any error invalidates the final conclusion, mark its **Impact** as Fatal.\n\nQuestion:\n{arg_question}\n\nDraft Solution:\n{arg_generated_response}\n",
+    "question_only_prompt": "{arg_problem}", 
+    "qa_mc_prompt": "{arg_problem} Let's think step by step and please wrap your final answer in \\boxed{} (e.g. \\boxed{A})."
+}

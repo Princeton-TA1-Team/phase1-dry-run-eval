@@ -1,0 +1,120 @@
+{
+    "Qwen3_8B_Thinking": {
+        "model_name": "Qwen/Qwen3-8B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "max_tokens": 32768
+        }
+    },
+    "Qwen3_32B_Thinking": {
+        "model_name": "Qwen/Qwen3-32B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "max_tokens": 32768
+        }
+    },
+    "Qwen3_8B_NoThinking": {
+        "model_name": "Qwen/Qwen3-8B",
+        "context_length": 8192,
+        "sampling_params": {
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 20,
+            "max_tokens": 8192,
+            "presence_penalty": 1.5,
+            "enable_thinking": false
+        }
+    },
+    "GPT_OSS_120B": {
+        "model_name": "openai/gpt-oss-120b",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 1.0,
+            "top_p": 1.0,
+            "top_k": 40,
+            "max_tokens": 32768
+        }
+    },
+    "GPT_OSS_20B": {
+        "model_name": "openai/gpt-oss-20b",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 1.0,
+            "top_p": 1.0,
+            "top_k": 40,
+            "max_tokens": 32768
+        }
+    },
+    "GPT_OSS_20B_recursive": {
+        "model_name": "openai/gpt-oss-20b",
+        "context_length": 65536,
+        "sampling_params": {
+            "temperature": 1.0,
+            "top_p": 1.0,
+            "top_k": 40,
+            "max_tokens": 65536
+        }
+    },
+    "Nemotron_32B": {
+        "model_name": "nvidia/OpenReasoning-Nemotron-32B",
+        "context_length": 65536,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "max_tokens": 65536
+        }
+    },
+    "Nemotron_7B": {
+        "model_name": "nvidia/OpenReasoning-Nemotron-7B",
+        "context_length": 65536,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "max_tokens": 65536
+        }
+    },
+    "Qwen3_32B": {
+        "model_name": "Qwen/Qwen3-32B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "max_tokens": 32768
+        }
+    },
+    "Qwen3_8B": {
+        "model_name": "Qwen/Qwen3-8B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "max_tokens": 32768
+        }
+    },
+    "LlamaR1_8B": {
+        "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "max_tokens": 32768
+        }
+    },
+    "QwenR1_7B": {
+        "model_name": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "max_tokens": 32768
+        }
+    }
+}

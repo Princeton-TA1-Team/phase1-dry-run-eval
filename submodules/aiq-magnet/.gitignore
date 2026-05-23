@@ -1,0 +1,10 @@
+*.egg-info
+__pycache__
+.venv*
+venv*
+dist
+build
+docs/build/
+
+.ipynb_checkpoints/
+.coverage

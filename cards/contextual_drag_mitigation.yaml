@@ -1,0 +1,105 @@
+# Contextual Drag §4 — context-manipulation mitigation recovers drag failures.
+#
+# Runs the full clean → aggregate → 1F → mitigation → buckets chain on
+# the host's GPU. Computes 8-bucket outcome decomposition over the
+# (Direct ✓ / 1F ✗ / Mitigated ✓-or-✗) cube and reports
+# `recovery_rate = recoverable_drag / (recoverable_drag + persistent_drag)`,
+# i.e. of the problems where the model fails when seeing a single
+# failed trajectory in its context (drag failures), what fraction does
+# the cm_filter1 / cm_revise1 chain recover?
+#
+# Default cell: Qwen3_8B_NoThinking × gpqa × cm_filter1, target
+# ≈0.40 per AGENTIC_RESEARCH_LOG/GENERAL_EXP_LOG.md 2026-05-05.
+
+title: "Contextual Drag §4 — mitigation recovers drag failures"
+
+description: |
+  Tests whether the §4 context-manipulation pipeline (cm_filter1 or
+  cm_revise1) recovers problems that the model would have solved
+  directly but fails when given a single failed trajectory in its
+  context (the "drag failures"). The pipeline either filters the
+  failed trajectory in-place (cm_filter1) or rewrites it (cm_revise1),
+  then solves the problem n=8 times; recovery is per-(problem, draft)
+  with a majority binarization at 0.5.
+
+  Subprocess chain (per cell, single GPU):
+    inference run     (direct, clean prompt)
+      → eval math --flatten_dataset
+      → data initial-sampling-postprocess
+      → data aggregate -T 0 -F 2
+      → data minimal-aggregate-flatten  (2F.ds → 1F.ds)
+      → inference run  (1F, 1f template) on 1F.ds
+      → eval math
+      → contextual_drag mitigation run
+            --variant cm_filter1 --model_config <X> --input_ds <1F.ds>
+            --output_dir <mit_dir> --template_path <ctx_manip.json>
+      → contextual_drag analysis mitigation_buckets run
+            --direct_jsonl ... --onef_jsonl ... --mit_jsonl ...
+            --threshold 0.5 --variant cm_filter1 --out summary.json
+      → load summary.derived.recovery_rate
+
+  Replicates §4 of "Contextual Drag" (Cheng et al., 2026) on a small
+  slice runnable on a single 24 GB GPU.
+
+version: 0.1
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+
+tags:
+  - contextual-drag
+  - mitigation
+  - reasoning
+
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception(
+          "Inconclusive: data aggregate produced 0 problems — increase "
+          "--n or pick a benchmark where the model occasionally fails "
+          "with a single false trajectory in context."
+      )
+    if drag_failed_den == 0:
+      raise Exception(
+          "Inconclusive: (Direct ✓, 1F ✗) cohort empty — no drag "
+          "failures to recover. Increase --n_problems or change task."
+      )
+    if recovery_rate is None:
+      raise Exception(
+          "Inconclusive: recovery_rate is null."
+      )
+    assert recovery_rate >= recovery_threshold, (
+        f"Got recovery_rate={recovery_rate:.3f}, expected >= "
+        f"{recovery_threshold:.3f} (recoverable_drag={recoverable_drag}, "
+        f"persistent_drag={persistent_drag}, drag_failed_den={drag_failed_den}, "
+        f"variant={variant})."
+    )
+
+pipeline:
+  mitigation_experiment:
+    executable: 'python -m cards.nodes.run_mitigation_experiment'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/gpqa/gpqa.ds'
+      variant: 'cm_filter1'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_template_key: 'qa_mc_prompt'
+      onef_template_path: 'prompt_templates/1f_templates.json'
+      onef_template_key: '1f'
+      mit_template_path: 'prompt_templates/context_manipulation_templates.json'
+      max_questions: 16
+      n: 8
+      n_samples_solve: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: 'results.json'
+
+symbols:
+  recovery_threshold:
+    type: float
+    value: 0.20

@@ -1,0 +1,106 @@
+# Contextual Drag TED — anchored-vs-direct tree-edit-distance gap.
+#
+# Runs the full clean → aggregate → 2F → cache → summarize chain on
+# the host's GPU. For each problem, computes the per-anchor mean
+# tree-edit distance from the *draft answer set* to the model's
+# (a) direct-baseline answers (`init_response` distances), and
+# (b) 2F-conditioned answers (`anchored_responses` distances).
+# Reports `ted_drag = mean_TED(direct) − mean_TED(2f)` — how much
+# closer the 2F-conditioned answers cluster to the failed drafts in
+# context than the direct baseline does.
+#
+# Default cell: Qwen3_8B_NoThinking × 24-game × phase=2f, target
+# ≈1.5–2.0 per AGENTIC_RESEARCH_LOG/GENERAL_EXP_LOG.md 2026-05-06.
+
+title: "Contextual Drag TED — anchored answers cluster toward failed context drafts"
+
+description: |
+  Tests whether the model's 2F-conditioned answers (when prompted with
+  two failed trajectories in context) cluster significantly closer —
+  in tree-edit-distance over LaTeX expressions — to the trajectories'
+  extracted answers than the model's direct-baseline answers do.
+
+  Subprocess chain (per cell, single GPU):
+    inference run    (direct, clean prompt, task_name=init_response)
+      → eval math --flatten_dataset
+      → data initial-sampling-postprocess
+      → data aggregate -T 0 -F 2
+      → inference run (2F, 2f template, task_name=init_response)
+      → eval math --flatten_dataset
+      → contextual_drag analysis ted build_cache
+            --phase 2f --anchored_jsonl <2F evaluated_*.jsonl>
+            --init_jsonl <direct evaluated_*_flattened.jsonl>
+            --metric tree --n_jobs 4 --cache_out cache.json
+      → contextual_drag analysis ted summarize
+            --cache_in cache.json --metric tree --reduction min
+            --out summary.json
+      → load summary; ted_drag = init_response − anchored_responses
+
+  Replicates the TED finding of "Contextual Drag" (Cheng et al., 2026)
+  on a small slice runnable on a single 24 GB GPU.
+
+version: 0.1
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+
+tags:
+  - contextual-drag
+  - ted
+  - tree-edit-distance
+  - reasoning
+
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception(
+          "Inconclusive: data aggregate produced 0 problems — increase "
+          "--n or pick a benchmark in the model's ambiguous zone."
+      )
+    if n_kept_problems == 0:
+      raise Exception(
+          "Inconclusive: no problem survived the TED filter "
+          "(finish_reason=='stop' + parseable extracted answer on both "
+          "anchored and direct sides)."
+      )
+    if ted_drag is None:
+      raise Exception(
+          "Inconclusive: ted_drag is null (one of mean_TED sides is null)."
+      )
+    assert ted_drag >= ted_threshold, (
+        f"Got ted_drag={ted_drag:+.3f}, expected >= {ted_threshold:+.3f} "
+        f"(mean_TED_direct={mean_ted_direct:.3f}, "
+        f"mean_TED_2f={mean_ted_2f:.3f}, "
+        f"n_kept_problems={n_kept_problems}, metric={ted_metric}, "
+        f"phase={ted_phase})."
+    )
+
+pipeline:
+  ted_experiment:
+    executable: 'python -m cards.nodes.run_ted_experiment'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/24-game/24-game.ds'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_template_key: 'qwen_math_prompt'
+      twof_template_path: 'prompt_templates/2f_templates.json'
+      twof_template_key: '2f'
+      ted_metric: 'tree'
+      ted_reduction: 'min'
+      ted_phase: '2f'
+      n_jobs: 4
+      max_questions: 32
+      n: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: 'results.json'
+
+symbols:
+  ted_threshold:
+    type: float
+    value: 1.0

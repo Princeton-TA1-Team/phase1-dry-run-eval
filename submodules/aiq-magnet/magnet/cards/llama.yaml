@@ -1,0 +1,129 @@
+# Preliminary Working Evaluation Card Example
+
+title: "In-domain Model Consistency for Llama Family"
+description: |
+  Performance in a single domain benchmark should be consistent within a bound of variation for an entire model family
+
+version: 1.0
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Kitware TA2 Team
+  email: aiq-ta2@kitware.com
+
+tags:
+  - example
+  - llama
+  - helm
+  - mmlu
+
+links:
+  - title: "MAGNET"
+    url: "https://github.com/AIQ-Kitware/aiq-magnet"
+    type: "software"
+  - title: "mmlu"
+    url: "https://huggingface.co/datasets/cais/mmlu"
+    type: "dataset"
+  - title: "Precomputed HELM lite benchmark outputs"
+    url: "https://console.cloud.google.com/storage/browser/crfm-helm-public/lite"
+    type: "asset"
+
+claim:
+  python: |
+    assert abs(comp_score - base_score) < threshold, f"{comp_model} score ({comp_score:.2f}) exceeds consistency bound on {base_model} ({base_score:.2f})"
+
+symbols:
+  threshold:
+    type: float
+    value: 0.1
+
+  base_model:
+    sweep:
+      - meta/llama-2-13b
+      - meta/llama-2-70b
+      - meta/llama-2-7b
+      - meta/llama-3-70b
+      - meta/llama-3-8b
+      - meta/llama-65b
+
+  base_score:
+    type: float
+    depends_on:
+      - base_model
+      - exact_match_scores
+    python: |
+      base_score = [(name, score) for name, score in exact_match_scores if name == base_model][0][1]
+
+  comp_model:
+    sweep:
+      - meta/llama-2-13b
+      - meta/llama-2-70b
+      - meta/llama-2-7b
+      - meta/llama-3-70b
+      - meta/llama-3-8b
+      - meta/llama-65b
+
+  comp_score:
+    type: float
+    depends_on:
+      - comp_model
+      - exact_match_scores
+    python: |
+      comp_score = [(name, score) for name, score in exact_match_scores if name == comp_model][0][1]
+
+  helm_runs_path:
+    type: str
+    value: './data/crfm-helm-public/lite/benchmark_output'
+
+  run_specs:
+    type: object
+    depends_on:
+      - helm_runs_path
+    python: |
+      import ubelt as ub
+      from magnet.backends.helm.helm_outputs import HelmOutputs
+      from magnet.backends.helm.helm_outputs import HelmSuiteRuns
+
+      # Load all HELM Lite releases 
+      helm_data = HelmOutputs(ub.Path(helm_runs_path))
+
+      # Collect runs from each release
+      helm_lite_runs = []
+      for suite in helm_data.suites():
+        # unix glob filter runs for llama models evaluated on MMLU
+        helm_lite_runs.extend(suite.runs("mmlu*model=meta_*llama*").paths)
+
+      # Create an aggregate view of all HELM Lite runs used for latest leaderboard
+      run_specs = HelmSuiteRuns.coerce(helm_lite_runs)
+
+  exact_match_scores:
+    type: List[Tuple[str, float]]
+    depends_on:
+      - run_specs
+    python: |
+      # Get dataframe of results from runs
+      run_stats = run_specs.stats()
+
+      # filter to test split stats per https://github.com/stanford-crfm/helm/issues/2362
+      run_stats = run_stats[
+          (run_stats['stats.name.name'] == 'exact_match') & 
+          (run_stats['stats.name.perturbation.computed_on'].isna()) &
+          (run_stats['stats.name.split'] == 'test')]
+
+      # extract HELM model common names
+      helm_models = run_specs.run_spec().set_index('run_spec.name')['run_spec.adapter_spec.model'].to_dict()
+      run_stats['model'] = run_stats['run_spec.name'].map(helm_models)
+
+      # only specific models
+      run_stats = run_stats[(run_stats['model'] == base_model) | (run_stats['model'] == comp_model)]
+
+      # average exact_match scores across subjects
+      exact_match_scores_df = run_stats.groupby('model')['stats.mean'].mean()
+
+      exact_match_scores = list(exact_match_scores_df.items())
+
+
+
+

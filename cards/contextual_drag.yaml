@@ -1,0 +1,76 @@
+# Contextual Drag — failed reasoning in the prompt context degrades accuracy.
+#
+# This is the *real* contextual-drag claim card (vs. cards/contextual_drag_smoke.yaml,
+# which only verifies magnet ↔ this repo wiring). It runs the full
+# clean → aggregate → 2F → drag pipeline on the host's GPU.
+#
+# Default config: gpqa, Qwen3_8B_NoThinking, 8 problems × n=8, fits a 24 GB GPU
+# in ~5 minutes. Sweep model_config / data_path / max_questions for a richer run.
+
+title: "Contextual Drag — failed reasoning in context degrades accuracy"
+
+description: |
+  Tests whether injecting two of the model's own previously-failed reasoning
+  trajectories into its prompt context degrades subsequent accuracy on the
+  same problems. Runs `inference run` with the clean prompt template, labels
+  trajectories via `eval math`, builds a 2F-augmented dataset using
+  `data aggregate`, runs `inference run` again with the 2F template, and
+  measures `drag = acc_clean − acc_2f` on the problems that survived
+  aggregation. Claim is `drag ≥ drag_threshold`.
+
+  Replicates the qualitative finding of "Contextual Drag: How Errors in the
+  Context Affect LLM Reasoning" (Cheng et al., 2026) on a small slice
+  runnable on consumer GPUs.
+
+version: 0.1
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+
+tags:
+  - contextual-drag
+  - reasoning
+  - in-context-learning
+
+claim:
+  python: |
+    if drag is None:
+      raise Exception(
+          "Inconclusive: "
+          "drag is null; aggregation produced 0 problems — increase --n or "
+          "use a benchmark in the model's ambiguous zone (gpqa works for "
+          "Qwen3_8B; math500 too easy, aime24 too hard)."
+      )
+    assert drag >= drag_threshold, (
+        f"Got drag={drag:+.3f}, expected >= {drag_threshold:+.3f} "
+        f"(acc_clean={acc_clean:.3f}, acc_2f={acc_2f:.3f}, "
+        f"n_kept_problems={n_kept_problems})."
+    )
+
+pipeline:
+  drag_experiment:
+    executable: 'python -m cards.nodes.run_drag_experiment'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/gpqa/gpqa.ds'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_template_key: 'qa_mc_prompt'
+      twof_template_path: 'prompt_templates/2f_templates.json'
+      twof_template_key: '2f'
+      max_questions: 8
+      n: 8
+      max_tokens: 2048
+      gpu_memory_utilization: 0.85
+      num_true: 0
+      num_false: 2
+    out_paths:
+      results_fpath: 'results.json'
+
+symbols:
+  drag_threshold:
+    type: float
+    value: 0.05
