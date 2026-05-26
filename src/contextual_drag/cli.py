@@ -9,6 +9,7 @@ from contextual_drag.data.cli import DataCLI
 from contextual_drag.evaluation.cli import EvalCLI
 from contextual_drag.inference.cli import InferenceCLI
 from contextual_drag.mitigation.cli import MitigationCLI
+from contextual_drag.recursive.cli import RecursiveCLI
 
 
 class ContextualDragCLI(scfg.ModalCLI):
@@ -16,6 +17,7 @@ class ContextualDragCLI(scfg.ModalCLI):
     eval = EvalCLI
     data = DataCLI
     mitigation = MitigationCLI
+    recursive = RecursiveCLI
     analysis = AnalysisCLI
 
 

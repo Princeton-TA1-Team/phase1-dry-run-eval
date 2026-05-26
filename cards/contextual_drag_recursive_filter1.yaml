@@ -1,0 +1,102 @@
+# Contextual Drag — recursive self-improvement (rf1 variant).
+#
+# Runs the full Stage 0 → Stage 1 strategy → Loop {2a draft / 2b join /
+# 2c filter1 / 2d solve / 2e summary} + makeup recursive pipeline on the
+# host's GPU. The model is given its own previous draft trajectories
+# together with a strategy critique, a filtered (cleaned) context, and
+# is asked to re-solve. Claim is `delta_acc_rf1 = acc_round_max -
+# acc_round_0 >= delta_threshold_rf1` (strategy + filter recursion
+# lifts pass@1 by at least 2 pts).
+#
+# Default cell: GPT_OSS_20B_recursive × aime24 ×
+# max_recursive_steps=16 × n_samples_solve=8. Data lives in
+# data/full_data/<task>/<task>.ds (NOT data/smoke/). This is a multi-
+# hour run per task on a single H100, not a fast smoke check.
+
+title: "Contextual Drag — recursive self-improvement (rf1) lifts accuracy"
+
+description: |
+  Tests whether the rf1 recursive self-improvement pipeline (strategy
+  critique + filter1 context cleaning + re-solve, looped for
+  max_recursive_steps rounds) raises pass@1 on a math benchmark above
+  the round-0 baseline (the model's first-shot solve of the same
+  problems). Round-0 is established by Stage-0 aggregation over the
+  init-response dataset; subsequent rounds re-solve with the previous
+  round's incorrect trajectory + a strategy critique + a filtered
+  context fed back into a metacognitive_filter1_solve prompt.
+
+  Subprocess chain (one long-running process on the host's GPU):
+    contextual_drag recursive run
+        --variant rf1 --model_config GPT_OSS_20B_recursive
+        --init_alias GPT_OSS_20B --input_ds <data/full_data/<task>/<task>.ds>
+        --output_dir <out>/recursive --max_recursive_steps 16
+        --n_samples_solve 8 --task_name <task>
+      → contextual_drag eval math --dataset_dir <out>/recursive/round{max_step}/solve
+      → load round0_verification.json and the round{max_step} error_analysis JSON
+      → delta_acc_rf1 = acc_round_max − acc_round_0
+
+  Replicates the recursive self-improvement finding from the
+  recursive_filter1 line of work on a single (model, task) cell. PASS
+  = strategy + context-filtering recursion lifts accuracy by ≥ 2 pts.
+
+version: 0.1
+
+organizations:
+  - Kitware
+
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+
+tags:
+  - contextual-drag
+  - recursive
+  - self-improvement
+  - reasoning
+
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception(
+          "Inconclusive: Stage-0 aggregation produced 0 problems for the "
+          "round-0 draft pool. Bump --max_questions or pick a (model, task) "
+          "cell where the init responses surface at least one failed "
+          "trajectory per problem."
+      )
+    if makeup_exhausted:
+      raise Exception(
+          "Inconclusive: the makeup loop exhausted its attempts before the "
+          "final round produced any solves — every recursive round dropped "
+          "the same problem(s). Raise makeup_max_attempts/makeup_batch_size, "
+          "or pick a benchmark with more parseable trajectories."
+      )
+    assert delta_acc_rf1 >= delta_threshold_rf1, (
+        f"Got delta_acc_rf1={delta_acc_rf1:+.3f}, expected >= "
+        f"{delta_threshold_rf1:+.3f} "
+        f"(acc_round_0={acc_round_0:.3f}, acc_round_max={acc_round_max:.3f}, "
+        f"variant=rf1)."
+    )
+
+pipeline:
+  recursive_filter1:
+    executable: 'python -m cards.nodes.run_recursive_filter1'
+    algo_params:
+      model_config: 'GPT_OSS_20B_recursive'
+      init_alias: 'GPT_OSS_20B'
+      task: 'aime24'
+      data_path: 'data/full_data/aime24/aime24.ds'
+      template_path: 'prompt_templates/recursive_templates.json'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_n_samples: 8
+      max_recursive_steps: 16
+      n_samples_solve: 8
+      tensor_parallel_size: 1
+      gpu_memory_utilization: 0.9
+      max_tokens: 65536
+    out_paths:
+      results_fpath: 'results.json'
+
+symbols:
+  delta_threshold_rf1:
+    type: float
+    value: 0.02
