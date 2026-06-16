@@ -9,6 +9,8 @@ class AggregateDataCLI(scfg.DataConfig):
     input_dir = scfg.Value("processed_flattened_outputs", help="Input dataset directory.")
     num_true = scfg.Value(0, type=int, help="Number of correct trajectories per sample.")
     num_false = scfg.Value(2, type=int, help="Number of incorrect trajectories per sample.")
+    min_num_true_sampling = scfg.Value(2, type=int, help="Filter threshold: minimum number of correct responses a problem must have to be kept. Must be at least num_true.")
+    min_num_false_sampling = scfg.Value(2, type=int, help="Filter threshold: minimum number of incorrect responses a problem must have to be kept. Must be at least num_false.")
     output_dir = scfg.Value(None, help="Output directory.")
     seed = scfg.Value(42, type=int, help="Random seed.")
     problem_id_column = scfg.Value("id", help="Problem id column.")

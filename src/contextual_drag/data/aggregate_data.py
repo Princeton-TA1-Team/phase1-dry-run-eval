@@ -70,10 +70,21 @@ def filter_problem(problem_to_entries, args):
     correct_key = "correct"
     incorrect_key = "incorrect"
     valid_problem_ids = []
+    # Filtering is decoupled from sampling: keep a problem only if it has at
+    # least min_num_*_sampling trajectories of each class, then sample
+    # num_true / num_false of them in sample_combos(). The per-class minima
+    # must be at least the sample sizes so every kept problem has enough
+    # trajectories to draw from.
+    assert args.num_true <= args.min_num_true_sampling, (
+        f"num_true ({args.num_true}) must be less than or equal to "
+        f"min_num_true_sampling ({args.min_num_true_sampling})"
+    )
+    assert args.num_false <= args.min_num_false_sampling, (
+        f"num_false ({args.num_false}) must be less than or equal to "
+        f"min_num_false_sampling ({args.min_num_false_sampling})"
+    )
     for problem_id in problem_to_entries:
-        num_trajs = args.num_true + args.num_false
-        if len(problem_to_entries[problem_id][correct_key]) >= num_trajs and len(problem_to_entries[problem_id][incorrect_key]) >= num_trajs:
-        # if len(problem_to_entries[problem_id][incorrect_key]) >= num_trajs:
+        if len(problem_to_entries[problem_id][correct_key]) >= args.min_num_true_sampling and len(problem_to_entries[problem_id][incorrect_key]) >= args.min_num_false_sampling:
             valid_problem_ids.append(problem_id)
             total_valid_combos += combination(len(problem_to_entries[problem_id][correct_key]), args.num_true) * combination(len(problem_to_entries[problem_id][incorrect_key]), args.num_false)
     print(f"Total valid combinations: {total_valid_combos}")
