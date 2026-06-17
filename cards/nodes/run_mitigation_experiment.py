@@ -65,6 +65,14 @@ class RunMitigationExperimentCLI(scfg.DataConfig):
     n_samples_solve = scfg.Value(8, type=int, tags=["algo_param"])
     max_tokens = scfg.Value(2048, type=int, tags=["algo_param"])
     gpu_memory_utilization = scfg.Value(0.85, type=float, tags=["algo_param"])
+    min_num_true_sampling = scfg.Value(
+        2, type=int, tags=["algo_param"],
+        help="`--min_num_true_sampling` for `data aggregate`: keep a problem only "
+             "if it has >= this many correct responses (must be >= num_true=0).")
+    min_num_false_sampling = scfg.Value(
+        2, type=int, tags=["algo_param"],
+        help="`--min_num_false_sampling` for `data aggregate`: keep a problem only "
+             "if it has >= this many incorrect responses (must be >= num_false).")
 
     results_fpath = scfg.Value("results.json", tags=["out_path", "primary"])
 
@@ -126,6 +134,8 @@ class RunMitigationExperimentCLI(scfg.DataConfig):
             "--input_dir", str(processed_ds),
             "--num_true", "0",
             "--num_false", "2",
+            "--min_num_true_sampling", str(cfg.min_num_true_sampling),
+            "--min_num_false_sampling", str(cfg.min_num_false_sampling),
             "--output_dir", str(agg_dir),
             "--init_response_models", str(cfg.model_config),
         ], check=False)

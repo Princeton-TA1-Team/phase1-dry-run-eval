@@ -11,14 +11,14 @@
         "dtype": "int64",
         "_type": "Value"
       },
-      "_type": "List"
+      "_type": "Sequence"
     },
     "solutions": {
       "feature": {
         "dtype": "string",
         "_type": "Value"
       },
-      "_type": "List"
+      "_type": "Sequence"
     },
     "compute_graph": {
       "feature": {
@@ -27,18 +27,18 @@
             "dtype": "string",
             "_type": "Value"
           },
-          "_type": "List"
+          "_type": "Sequence"
         },
-        "_type": "List"
+        "_type": "Sequence"
       },
-      "_type": "List"
+      "_type": "Sequence"
     },
     "numbers": {
       "feature": {
         "dtype": "int64",
         "_type": "Value"
       },
-      "_type": "List"
+      "_type": "Sequence"
     },
     "source": {
       "dtype": "string",

@@ -111,6 +111,20 @@ class RunDragExperimentCLI(scfg.DataConfig):
         help="`-F` for `data aggregate` (number of failed trajectories injected per 2F prompt).",
         tags=["algo_param"],
     )
+    min_num_true_sampling = scfg.Value(
+        2,
+        type=int,
+        help="`--min_num_true_sampling` for `data aggregate`: keep a problem only if "
+             "it has >= this many correct responses (must be >= num_true).",
+        tags=["algo_param"],
+    )
+    min_num_false_sampling = scfg.Value(
+        2,
+        type=int,
+        help="`--min_num_false_sampling` for `data aggregate`: keep a problem only if "
+             "it has >= this many incorrect responses (must be >= num_false).",
+        tags=["algo_param"],
+    )
 
     results_fpath = scfg.Value(
         "results.json",
@@ -195,6 +209,8 @@ class RunDragExperimentCLI(scfg.DataConfig):
                 "--input_dir", str(processed_ds),
                 "--num_true", str(cfg.num_true),
                 "--num_false", str(cfg.num_false),
+                "--min_num_true_sampling", str(cfg.min_num_true_sampling),
+                "--min_num_false_sampling", str(cfg.min_num_false_sampling),
                 "--output_dir", str(aggregate_dir),
                 "--init_response_models", str(cfg.model_config),
             ],

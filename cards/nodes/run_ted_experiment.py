@@ -63,6 +63,16 @@ class RunTedExperimentCLI(scfg.DataConfig):
     n = scfg.Value(8, type=int, tags=["algo_param"])
     max_tokens = scfg.Value(2048, type=int, tags=["algo_param"])
     gpu_memory_utilization = scfg.Value(0.85, type=float, tags=["algo_param"])
+    min_num_true_sampling = scfg.Value(
+        2, type=int, tags=["algo_param"],
+        help="`--min_num_true_sampling` for `data aggregate`: keep a problem only "
+             "if it has >= this many correct responses (must be >= num_true=0).")
+    min_num_false_sampling = scfg.Value(
+        2, type=int, tags=["algo_param"],
+        help="`--min_num_false_sampling` for `data aggregate`: keep a problem only "
+             "if it has >= this many incorrect responses (must be >= num_false). "
+             "On a task the model rarely fails (e.g. 24-game), few problems reach "
+             "2 incorrect at small n; raising n is the primary lever here.")
 
     results_fpath = scfg.Value("results.json", tags=["out_path", "primary"])
 
@@ -125,6 +135,8 @@ class RunTedExperimentCLI(scfg.DataConfig):
             "--input_dir", str(processed_ds),
             "--num_true", "0",
             "--num_false", str(num_false),
+            "--min_num_true_sampling", str(cfg.min_num_true_sampling),
+            "--min_num_false_sampling", str(cfg.min_num_false_sampling),
             "--output_dir", str(agg_dir),
             "--init_response_models", str(cfg.model_config),
         ], check=False)

@@ -90,7 +90,12 @@ pipeline:
       init_template_key: 'qa_mc_prompt'
       onef_template_path: 'prompt_templates/1f_templates.json'
       onef_template_key: '1f'
-      mit_template_path: 'prompt_templates/context_manipulation_templates.json'
+      # NOTE (Kitware): the mitigation pipeline hardcodes metacognitive_*
+      # template keys (metacognitive_filter_strategy, metacognitive_filter_filter1,
+      # metacognitive_filter1_solve*) which exist only in recursive_templates.json,
+      # not in context_manipulation_templates.json (which uses un-prefixed keys).
+      # Repointed here as an attempted fix; pending Princeton confirmation of intent.
+      mit_template_path: 'prompt_templates/recursive_templates.json'
       max_questions: 16
       n: 8
       n_samples_solve: 8
