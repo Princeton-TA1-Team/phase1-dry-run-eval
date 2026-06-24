@@ -51,8 +51,8 @@ _BUILTIN_WHITELIST = (
 
 # (yaml_filename, expected --variant in subprocess chain, expected delta symbol)
 _CARDS = [
-    ("contextual_drag_recursive_filter1.yaml", "rf1",   "delta_acc_rf1"),
-    ("contextual_drag_recursive_naive.yaml",   "naive", "delta_acc_naive"),
+    ("smoke_runs/GPT_OSS_20B_recursive/recursive_filter1/aime24.yaml", "rf1",   "delta_acc_rf1"),
+    ("smoke_runs/GPT_OSS_20B_recursive/recursive_naive/aime24.yaml",   "naive", "delta_acc_naive"),
 ]
 
 
@@ -83,30 +83,34 @@ def _wrapper_result_keys(node_module: str) -> set[str]:
     src_path = _wrapper_path(node_module)
     if not src_path.exists():
         return set()
-    tree = ast.parse(src_path.read_text())
+    sources = [src_path.read_text()]
+    if "_recursive_multirun" in sources[0]:
+        helper = NODES_DIR / "_recursive_multirun.py"
+        if helper.exists():
+            sources.append(helper.read_text())
     keys: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Dict):
-            for k in node.keys:
-                if isinstance(k, ast.Constant) and isinstance(k.value, str):
-                    keys.add(k.value)
-        elif isinstance(node, ast.Call):
-            for kw in node.keywords:
-                if kw.arg:
-                    keys.add(kw.arg)
-        elif isinstance(node, ast.Assign):
-            # Module-level constants like DELTA_KEY = "delta_acc_rf1" turn into
-            # dict keys at runtime; treat their RHS string constants as
-            # produced-key candidates.
-            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                keys.add(node.value.value)
+    for src in sources:
+        for node in ast.walk(ast.parse(src)):
+            if isinstance(node, ast.Dict):
+                for k in node.keys:
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                        keys.add(k.value)
+            elif isinstance(node, ast.Call):
+                for kw in node.keywords:
+                    if kw.arg:
+                        keys.add(kw.arg)
+                    if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                        keys.add(kw.value.value)  # delta_key="delta_acc_rf1"
+            elif isinstance(node, ast.Assign):
+                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                    keys.add(node.value.value)
     return keys
 
 
 @pytest.mark.parametrize(
     ("yaml_name", "expected_variant", "expected_delta_symbol"),
     _CARDS,
-    ids=[c[0].replace("contextual_drag_", "").replace(".yaml", "") for c in _CARDS],
+    ids=[c[1] for c in _CARDS],
 )
 class TestRecursiveCard:
     """All recursive-card contract assertions, parameterised over both variants."""
@@ -186,6 +190,11 @@ class TestRecursiveCard:
         src_path = _wrapper_path(node_module)
         assert src_path.exists(), f"{yaml_name}: wrapper {src_path} missing"
         source = src_path.read_text()
+        # Fold in the shared helper: the recursive/run chain lives there now
+        # (the variant literal stays in the thin wrapper).
+        _helper = NODES_DIR / "_recursive_multirun.py"
+        if "_recursive_multirun" in source and _helper.exists():
+            source = source + "\n" + _helper.read_text()
 
         # The wrapper must construct the recursive subcommand. Tolerate
         # both `["recursive", "run", ...]` literal segments and the
@@ -204,20 +213,18 @@ class TestRecursiveCard:
             f"{expected_variant} as a string literal"
         )
 
-        # Static AST check: at least one subprocess.run call must chain
-        # through `python -m contextual_drag` (matches the same contract
-        # test_cards.py enforces on the other cards).
+        # Scan node + helper (folded above); accept run() or Popen().
         tree = ast.parse(source)
         run_calls = [
             n for n in ast.walk(tree)
             if (isinstance(n, ast.Call)
                 and isinstance(n.func, ast.Attribute)
-                and n.func.attr == "run"
+                and n.func.attr in ("run", "Popen")
                 and isinstance(n.func.value, ast.Name)
                 and n.func.value.id == "subprocess"
                 and n.args)
         ]
-        assert run_calls, f"{src_path}: no subprocess.run(...) calls found"
+        assert run_calls, f"{src_path}: no subprocess.run/Popen(...) calls found"
         # Pull constants out of every list-shaped first arg (including via
         # `cdrag + [...]` concatenation, mirroring how the other wrappers
         # build their command lines).

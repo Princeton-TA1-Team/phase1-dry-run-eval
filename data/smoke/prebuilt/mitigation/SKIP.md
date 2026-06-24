@@ -1,7 +1,7 @@
 # Pre-built §4 (mitigation) artefacts — DEFERRED
 
 This directory will eventually contain pre-built artefacts that let
-`cards/contextual_drag_mitigation.yaml` skip the GPU-bound steps —
+`cards/smoke_runs/Qwen3_8B_NoThinking/mitigation/gpqa.yaml` skip the GPU-bound steps —
 specifically:
 
   * a 16-problem `direct_inference/evaluated_*.jsonl`,
@@ -16,7 +16,7 @@ GPU large enough to run Qwen3_8B_NoThinking at n=8 on the gpqa slice and
 to drive the cm_filter1 strategy → filter1 → solve chain; the cards-impl
 agent that wrote this bundle has no GPU access.
 
-Until they ship, `cards/contextual_drag_mitigation.yaml` runs in its
+Until they ship, `cards/smoke_runs/Qwen3_8B_NoThinking/mitigation/gpqa.yaml` runs in its
 default "inline" mode (every step recomputed on the host's GPU). The
 card already handles this transparently; no flag is required.
 

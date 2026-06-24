@@ -53,4 +53,4 @@ conda run --live-stream -n "$env_name" pip install -e .
 
 echo
 echo "[install] done. Activate with:  conda activate $env_name"
-echo "[install] smoke test:           python -m magnet.evaluation cards/contextual_drag_smoke.yaml"
+echo "[install] smoke test:           PYTHONPATH=$PWD/src python -m magnet.evaluation cards/smoke_runs/Qwen3_8B_NoThinking/wiring/math500.yaml"

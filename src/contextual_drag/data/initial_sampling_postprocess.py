@@ -5,39 +5,56 @@ from pathlib import Path
 from tqdm import tqdm
 from datasets import Dataset
 
-def parse_thinking_steps(response: str, prompt: str, max_response_length: int):
+# gpt-oss harmony special-token markers (mirrors recursive_filter1/pipeline/thinking.py)
+_HARMONY_FINAL = "<|channel|>final<|message|>"
+_HARMONY_ANALYSIS = "<|channel|>analysis<|message|>"
+_HARMONY_END_TOKENS = ("<|return|>", "<|end|>", "<|endoftext|>")
 
-    if response.startswith("analysis") and response[8] != " ":
-        # In GPT-OSS format
+
+def parse_thinking_steps(response: str, prompt: str, max_response_length: int = 16384):
+    """Parse a response into (post_thinking_text, thinking_status).
+
+    Three formats, matching the reference recursive pipeline:
+      1. gpt-oss harmony with special tokens KEPT (skip_special_tokens=False):
+         text after the last `<|channel|>final<|message|>` (trailing end tokens stripped).
+      2. gpt-oss harmony with special tokens STRIPPED: text after the last `assistantfinal`.
+      3. DeepSeek/Qwen `<think>...</think>`: text after the last `</think>`.
+    Otherwise `no_thinking` and the response is returned unchanged.
+    """
+    # Case 1: gpt-oss harmony with special tokens kept.
+    if _HARMONY_FINAL in response:
+        final_part = response.split(_HARMONY_FINAL)[-1]
+        for tok in _HARMONY_END_TOKENS:
+            if final_part.endswith(tok):
+                final_part = final_part[: -len(tok)]
+        return final_part.strip(), 'parsable_thinking'
+    if _HARMONY_ANALYSIS in response:
+        # Started reasoning but never reached the final channel (max_tokens cutoff).
+        return response, 'malformed_thinking'
+
+    # Case 2: gpt-oss harmony with special tokens stripped.
+    if response.startswith("analysis") and len(response) > 7 and response[7] != " ":
         if "assistantfinal" in response:
-            non_thinking_response = response.split("assistantfinal")[-1]
-            thinking_status = 'parsable_thinking'
-            return non_thinking_response, thinking_status
-        
-        else:
-            non_thinking_response = response
-            thinking_status = 'malformed_thinking'
-            return non_thinking_response, thinking_status
+            return response.split("assistantfinal")[-1], 'parsable_thinking'
+        return response, 'malformed_thinking'
 
+    # Case 3: <think>...</think>
     if "<think>" not in prompt + response:
-        non_thinking_response = response
-        thinking_status = 'no_thinking'
-        return non_thinking_response, thinking_status
-    
+        return response, 'no_thinking'
+
+    non_thinking_response = response.split("</think>")[-1]
+    concatenated_response = prompt + response
+    if concatenated_response.count("<think>") != concatenated_response.count("</think>"):
+        thinking_status = 'malformed_thinking'
     else:
-        non_thinking_response = response.split("</think>")[-1]
-        concatenated_response = prompt + response
-        if concatenated_response.count("<think>") != concatenated_response.count("</think>"):
-            thinking_status = 'malformed_thinking'
-        else:
-            thinking_status = 'parsable_thinking'
-    
+        thinking_status = 'parsable_thinking'
+
     if len(non_thinking_response) > max_response_length and thinking_status != 'parsable_thinking':
         non_thinking_response = non_thinking_response[:max_response_length]
         thinking_status = 'truncated_' + thinking_status
-        # print(f"Truncated {thinking_status} response to {len(non_thinking_response)} characters")
-    
+
     return non_thinking_response, thinking_status
+
 
 def preprocess_entry(entry, max_response_length):
 

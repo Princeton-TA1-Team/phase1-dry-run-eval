@@ -199,7 +199,8 @@ async def handle_row_with_verify(engine, sampling_params, prompt, row_dict, item
     if verifier is not None:
         gens_key = f"{item['task_name']}_generations"
         record[gens_key] = await verifier.annotate(
-            record[gens_key], ground_truth=row_dict.get("answer"))
+            record[gens_key], ground_truth=row_dict.get("answer"),
+            task=item.get("task"), row=row_dict)
 
     line = json.dumps(record, ensure_ascii=False)
     async with file_lock:

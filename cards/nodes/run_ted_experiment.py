@@ -1,7 +1,8 @@
 """
 Magnet pipeline node: TED (tree-edit-distance) anchored-vs-direct gap.
 
-Subprocess chain (one long-running Python process on the host's GPU):
+Subprocess chain (one long-running Python process on the host's GPU;
+steps 1-3 are init sampling, auto-reused from the shared 24-game init cache):
 
     inference run    (direct, clean prompt, task_name=init_response)
       -> eval math --flatten_dataset
@@ -40,6 +41,8 @@ from pathlib import Path
 
 import scriptconfig as scfg
 
+from cards.nodes._init_cache import ensure_init_sampling
+
 
 class RunTedExperimentCLI(scfg.DataConfig):
     """Sweep-able pipeline node for the TED claim card."""
@@ -63,6 +66,10 @@ class RunTedExperimentCLI(scfg.DataConfig):
     n = scfg.Value(8, type=int, tags=["algo_param"])
     max_tokens = scfg.Value(2048, type=int, tags=["algo_param"])
     gpu_memory_utilization = scfg.Value(0.85, type=float, tags=["algo_param"])
+    tensor_parallel_size = scfg.Value(
+        1, type=int, tags=["algo_param"],
+        help="vLLM tensor-parallel GPUs per model instance (shard one model across "
+             "N GPUs). gpt-oss-20B MoE is validated at TP=4.")
     min_num_true_sampling = scfg.Value(
         2, type=int, tags=["algo_param"],
         help="`--min_num_true_sampling` for `data aggregate`: keep a problem only "
@@ -74,6 +81,17 @@ class RunTedExperimentCLI(scfg.DataConfig):
              "On a task the model rarely fails (e.g. 24-game), few problems reach "
              "2 incorrect at small n; raising n is the primary lever here.")
 
+    init_cache_root = scfg.Value(
+        "runs/init_cache",
+        help=(
+            "Shared init-sampling cache root, keyed by <model>/<dataset>. TED is "
+            "24-game only, so this shares the 24-game init slot with the "
+            "drag/EC/mitigation cards when the init config matches. Empty string "
+            "= card-local init."
+        ),
+        tags=["algo_param"],
+    )
+
     results_fpath = scfg.Value("results.json", tags=["out_path", "primary"])
 
     @classmethod
@@ -83,10 +101,9 @@ class RunTedExperimentCLI(scfg.DataConfig):
         results_fpath = Path(cfg.results_fpath).resolve()
         results_fpath.parent.mkdir(parents=True, exist_ok=True)
         work_dir = results_fpath.parent
-        direct_dir = work_dir / "direct_inference"
         twof_dir = work_dir / "twof_inference"
         agg_dir = work_dir / "aggregate"
-        for d in (direct_dir, twof_dir, agg_dir):
+        for d in (twof_dir, agg_dir):
             d.mkdir(parents=True, exist_ok=True)
 
         phase = str(cfg.ted_phase)
@@ -94,40 +111,22 @@ class RunTedExperimentCLI(scfg.DataConfig):
 
         cdrag = [sys.executable, "-m", "contextual_drag"]
 
-        print(f"[card-node TED] step 1/8: direct inference", flush=True)
-        subprocess.run(cdrag + [
-            "inference", "run",
-            "--model_config", str(cfg.model_config),
-            "--data_path", str(cfg.data_path),
-            "--prompt_template_path", str(cfg.init_template_path),
-            "--prompt_template_key", str(cfg.init_template_key),
-            "--output_dir", str(direct_dir),
-            "--task_name", "init_response",
-            "--max_questions", str(cfg.max_questions),
-            "--n", str(cfg.n),
-            "--batch_size", str(min(8, int(cfg.max_questions))),
-            "--tensor_parallel_size", "1",
-            "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
-            "--max_tokens", str(cfg.max_tokens),
-        ], check=True)
-
-        print(f"[card-node TED] step 2/8: eval direct (--flatten_dataset)", flush=True)
-        subprocess.run(cdrag + [
-            "eval", "game_of_24",
-            "--dataset_dir", str(direct_dir),
-            "--single_partition", "--n_jobs", "1",
-            "--flatten_dataset",
-        ], check=True)
-
-        print(f"[card-node TED] step 3/8: data initial-sampling-postprocess", flush=True)
-        subprocess.run(cdrag + [
-            "data", "initial-sampling-postprocess",
-            "--input_dir", str(work_dir),
-            "--input_file_template", "direct_inference/*flattened.jsonl",
-        ], check=True)
-        processed_ds = work_dir / "processed_flattened_init_responses.ds"
-        if not processed_ds.exists():
-            raise FileNotFoundError(f"postprocess did not create {processed_ds}")
+        # Steps 1-3: init sampling (clean inference -> eval game_of_24 --flatten ->
+        # postprocess), auto-reused from the shared init cache. TED is 24-game only,
+        # so this shares runs/init_cache/<model>/24-game with the drag/EC/mitigation
+        # 24-game cards when the init config matches.
+        print(f"[card-node TED] steps 1-3/8: init sampling (shared cache)", flush=True)
+        init = ensure_init_sampling(
+            cdrag=cdrag, work_dir=work_dir, init_cache_root=cfg.init_cache_root,
+            model_config=cfg.model_config, data_path=cfg.data_path,
+            init_template_path=cfg.init_template_path,
+            init_template_key=cfg.init_template_key,
+            max_questions=cfg.max_questions, n=cfg.n, max_tokens=cfg.max_tokens,
+            gpu_memory_utilization=cfg.gpu_memory_utilization,
+            tensor_parallel_size=int(cfg.tensor_parallel_size),
+            eval_verb="game_of_24", dataset="",
+        )
+        processed_ds = init.processed_ds
 
         print(f"[card-node TED] step 4/8: data aggregate -T 0 -F {num_false}", flush=True)
         agg = subprocess.run(cdrag + [
@@ -164,7 +163,7 @@ class RunTedExperimentCLI(scfg.DataConfig):
             "--max_questions", str(n_kept),
             "--n", str(cfg.n),
             "--batch_size", str(min(8, n_kept)),
-            "--tensor_parallel_size", "1",
+            "--tensor_parallel_size", str(cfg.tensor_parallel_size),
             "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
             "--max_tokens", str(cfg.max_tokens),
         ], check=True)
@@ -181,7 +180,7 @@ class RunTedExperimentCLI(scfg.DataConfig):
         # reads init_response_generations_extracted_answer etc.). For
         # anchored, either format works (autodetected); use flat too for
         # symmetry.
-        direct_init_jsonl = _latest(direct_dir, "evaluated_*_flattened.jsonl")
+        direct_init_jsonl = _latest(init.init_dir, "evaluated_*_flattened.jsonl")
         anchored_jsonl = _latest(twof_dir, "evaluated_*_flattened.jsonl")
         cache_path = work_dir / "ted_cache.json"
         summary_path = work_dir / "ted_summary.json"

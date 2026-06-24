@@ -1,0 +1,45 @@
+# Contextual Drag §3.1 — error conditioning EXTERNAL (framing): prompt explicitly
+# states the single draft is incorrect; NO verdict filter. Full inference node.
+title: "Contextual Drag §3.1 — error conditioning external (framing)"
+description: |
+  1F conditioning with the framing template (prompt states the draft is wrong);
+  --setting framing applies no verdict filter. delta_acc = acc_direct - acc_conditioned.
+version: 0.1
+organizations: [Kitware]
+submitter: {name: Contextual Drag refactor team, email: jon.crall@kitware.com}
+tags: [contextual-drag, error-conditioning, reasoning]
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception("Inconclusive: data aggregate produced 0 problems.")
+    if filter_dropped_all:
+      raise Exception("Inconclusive: filter dropped every conditioned response.")
+    if delta_acc is None:
+      raise Exception("Inconclusive: delta_acc is null.")
+    assert delta_acc >= delta_threshold, (
+        f"Got delta_acc={delta_acc:+.3f}, expected >= {delta_threshold:+.3f} "
+        f"(acc_direct={acc_direct:.3f}, acc_conditioned={acc_conditioned:.3f}, "
+        f"n_kept_problems={n_kept_problems}, regime={regime}).")
+pipeline:
+  error_conditioning:
+    executable: 'python -m cards.nodes.run_error_conditioning'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/smoke/aime24/aime24.ds'
+      regime: 'framing'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_template_key: 'qwen_math_prompt'
+      framing_template_path: 'prompt_templates/ablation_templates.json'
+      framing_template_key: 'framing'
+      cond_template_path_1f: 'prompt_templates/1f_templates.json'
+      cond_template_key_1f: '1f'
+      cond_template_path_2f: 'prompt_templates/2f_templates.json'
+      cond_template_key_2f: '2f'
+      max_questions: 16
+      n: 8
+      max_tokens: 8192
+      gpu_memory_utilization: 0.85
+    out_paths:
+      results_fpath: 'results.json'
+symbols:
+  delta_threshold: {type: float, value: 0.05}

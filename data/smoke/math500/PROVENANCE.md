@@ -13,7 +13,7 @@
 | Byte size     | 4 120 B                                                                                               |
 | Transient files dropped | `cache-*.arrow` (HF leaves them after `.select`; we delete to keep the bundle deterministic). |
 
-This slice exists so that `cards/contextual_drag_smoke.yaml` can run end-
+This slice exists so that `cards/smoke_runs/Qwen3_8B_NoThinking/wiring/math500.yaml` can run end-
 to-end on a fresh checkout without depending on a per-user dataset path.
 The original `math500.ds` is a public benchmark (Hendrycks et al., 2021,
 "MATH"); the upstream copy on `/scratch/gpfs/ARORA/yc6206/` is unmodified

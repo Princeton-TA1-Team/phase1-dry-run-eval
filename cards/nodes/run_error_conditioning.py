@@ -1,19 +1,27 @@
 """
 Magnet pipeline node: §3 error conditioning.
 
-Subprocess chain (one long-running Python process on the host's GPU):
+Subprocess chain (one long-running Python process on the host's GPU;
+steps 1-3 are init sampling, auto-reused from the shared init cache):
 
     inference run  (direct, clean prompt, task_name=init_response)
-      -> eval math --flatten_dataset
+      -> eval math --flatten_dataset   (eval verb math/crux/game_of_24 per dataset family)
       -> data initial-sampling-postprocess
-      -> data aggregate -T 0 -F {1 if regime==1f else 2}
+      -> data aggregate -T 0 -F {2 if regime==2f else 1}   (2f: 2 drafts; 1f/framing: 1)
       -> inference run  (conditioned, regime-specific template,
                          task_name=init_response)
-      -> eval math
+      -> eval math   (eval verb per dataset family)
       -> contextual_drag analysis error_conditioning run
             --setting <regime> --cond_jsonl <cond evaluated_*.jsonl>
             --direct_jsonl <direct evaluated_*.jsonl> --out summary.json
       -> compute delta_acc = acc_direct - acc_conditioned
+
+Three regimes (--regime):
+  * 1f / 2f (posthoc): the conditioning prompt asks the model to *judge* one /
+    two of its own failed drafts (<overall_verdict*> tags); the metric is
+    restricted to the verdict-parseable cohort (the verdict filter).
+  * framing (external): the prompt *explicitly states* the single draft is
+    incorrect; --setting framing applies NO verdict filter.
 
 Writes a results.json magnet's GenericPipelineProcessor consumes:
 
@@ -28,7 +36,7 @@ Writes a results.json magnet's GenericPipelineProcessor consumes:
 Degenerate branches that write null delta_acc (so magnet emits a
 legible Inconclusive instead of crashing):
   - data aggregate exits non-zero or writes no .ds → aggregate_failed
-  - verdict filter empties the 1f/2f cohort → filter_dropped_all
+  - verdict filter empties the 1f/2f cohort → filter_dropped_all (framing: no filter)
 """
 
 from __future__ import annotations
@@ -40,13 +48,20 @@ from pathlib import Path
 
 import scriptconfig as scfg
 
+from cards.nodes._dataset_registry import aggregate_command_for, eval_verb_for
+from cards.nodes._init_cache import ensure_init_sampling
+
 
 class RunErrorConditioningCLI(scfg.DataConfig):
     """Sweep-able pipeline node for the §3 error-conditioning claim card."""
 
     model_config = scfg.Value("Qwen3_8B_NoThinking", tags=["algo_param"])
     data_path = scfg.Value("data/aime24/aime24.ds", tags=["algo_param"])
-    regime = scfg.Value("2f", choices=["1f", "2f"], tags=["algo_param"])
+    regime = scfg.Value(
+        "2f", choices=["1f", "2f", "framing"], tags=["algo_param"],
+        help="1f/2f = posthoc (model judges 1/2 failed drafts; metric uses the "
+             "verdict-parseable cohort). framing = external (prompt states the single "
+             "draft is incorrect; no verdict filter). Formal cards use 1f and framing.")
     init_template_path = scfg.Value(
         "prompt_templates/init_response_prompt_templates.json", tags=["algo_param"])
     init_template_key = scfg.Value("qwen_math_prompt", tags=["algo_param"])
@@ -56,10 +71,17 @@ class RunErrorConditioningCLI(scfg.DataConfig):
     cond_template_path_2f = scfg.Value(
         "prompt_templates/2f_templates.json", tags=["algo_param"])
     cond_template_key_2f = scfg.Value("2f", tags=["algo_param"])
+    framing_template_path = scfg.Value(
+        "prompt_templates/ablation_templates.json", tags=["algo_param"])
+    framing_template_key = scfg.Value("framing", tags=["algo_param"])
     max_questions = scfg.Value(16, type=int, tags=["algo_param"])
     n = scfg.Value(8, type=int, tags=["algo_param"])
     max_tokens = scfg.Value(2048, type=int, tags=["algo_param"])
     gpu_memory_utilization = scfg.Value(0.85, type=float, tags=["algo_param"])
+    tensor_parallel_size = scfg.Value(
+        1, type=int, tags=["algo_param"],
+        help="vLLM tensor-parallel GPUs per model instance (shard one model across "
+             "N GPUs). gpt-oss-20B MoE is validated at TP=4.")
     min_num_true_sampling = scfg.Value(
         2, type=int, tags=["algo_param"],
         help="`--min_num_true_sampling` for `data aggregate`: keep a problem only "
@@ -71,6 +93,19 @@ class RunErrorConditioningCLI(scfg.DataConfig):
         help="`--min_num_false_sampling` for `data aggregate`: keep a problem only "
              "if it has >= this many incorrect responses (must be >= num_false).")
 
+    dataset = scfg.Value("", tags=["algo_param"], help="Benchmark name; selects eval verb + aggregate command per family.")
+
+    init_cache_root = scfg.Value(
+        "runs/init_cache",
+        help=(
+            "Shared init-sampling cache root, keyed by <model>/<dataset>. Cards "
+            "with matching init config (model/dataset/template/n/max_tokens/"
+            "max_questions) auto-reuse it instead of regenerating. Empty string "
+            "= card-local init."
+        ),
+        tags=["algo_param"],
+    )
+
     results_fpath = scfg.Value("results.json", tags=["out_path", "primary"])
 
     @classmethod
@@ -80,59 +115,41 @@ class RunErrorConditioningCLI(scfg.DataConfig):
         results_fpath = Path(cfg.results_fpath).resolve()
         results_fpath.parent.mkdir(parents=True, exist_ok=True)
         work_dir = results_fpath.parent
-        direct_dir = work_dir / "direct_inference"
         cond_dir = work_dir / "cond_inference"
         agg_dir = work_dir / "aggregate"
-        for d in (direct_dir, cond_dir, agg_dir):
+        for d in (cond_dir, agg_dir):
             d.mkdir(parents=True, exist_ok=True)
 
         regime = str(cfg.regime)
-        num_false = 1 if regime == "1f" else 2
-        if regime == "1f":
+        num_false = 2 if regime == "2f" else 1
+        if regime == "framing":
+            cond_tpath, cond_tkey = cfg.framing_template_path, cfg.framing_template_key
+        elif regime == "1f":
             cond_tpath, cond_tkey = cfg.cond_template_path_1f, cfg.cond_template_key_1f
         else:
             cond_tpath, cond_tkey = cfg.cond_template_path_2f, cfg.cond_template_key_2f
 
         cdrag = [sys.executable, "-m", "contextual_drag"]
+        _ds = str(cfg.dataset).strip()
+        _eval_verb = eval_verb_for(_ds) if _ds else "math"
+        _agg_cmd = aggregate_command_for(_ds) if _ds else "aggregate"
 
-        print(f"[card-node §3] step 1/7: direct inference (clean prompt)", flush=True)
-        subprocess.run(cdrag + [
-            "inference", "run",
-            "--model_config", str(cfg.model_config),
-            "--data_path", str(cfg.data_path),
-            "--prompt_template_path", str(cfg.init_template_path),
-            "--prompt_template_key", str(cfg.init_template_key),
-            "--output_dir", str(direct_dir),
-            "--task_name", "init_response",
-            "--max_questions", str(cfg.max_questions),
-            "--n", str(cfg.n),
-            "--batch_size", str(min(8, int(cfg.max_questions))),
-            "--tensor_parallel_size", "1",
-            "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
-            "--max_tokens", str(cfg.max_tokens),
-        ], check=True)
-
-        print(f"[card-node §3] step 2/7: eval direct (--flatten_dataset)", flush=True)
-        subprocess.run(cdrag + [
-            "eval", "math",
-            "--dataset_dir", str(direct_dir),
-            "--single_partition", "--n_jobs", "1",
-            "--flatten_dataset",
-        ], check=True)
-
-        print(f"[card-node §3] step 3/7: data initial-sampling-postprocess", flush=True)
-        subprocess.run(cdrag + [
-            "data", "initial-sampling-postprocess",
-            "--input_dir", str(work_dir),
-            "--input_file_template", "direct_inference/*flattened.jsonl",
-        ], check=True)
-        processed_ds = work_dir / "processed_flattened_init_responses.ds"
-        if not processed_ds.exists():
-            raise FileNotFoundError(f"postprocess did not create {processed_ds}")
+        print(f"[card-node §3] steps 1-3/7: init sampling (shared cache)", flush=True)
+        init = ensure_init_sampling(
+            cdrag=cdrag, work_dir=work_dir, init_cache_root=cfg.init_cache_root,
+            model_config=cfg.model_config, data_path=cfg.data_path,
+            init_template_path=cfg.init_template_path,
+            init_template_key=cfg.init_template_key,
+            max_questions=cfg.max_questions, n=cfg.n, max_tokens=cfg.max_tokens,
+            gpu_memory_utilization=cfg.gpu_memory_utilization,
+            tensor_parallel_size=int(cfg.tensor_parallel_size),
+            eval_verb=_eval_verb, dataset=_ds,
+        )
+        processed_ds = init.processed_ds
 
         print(f"[card-node §3] step 4/7: data aggregate -T 0 -F {num_false}", flush=True)
         agg = subprocess.run(cdrag + [
-            "data", "aggregate",
+            "data", _agg_cmd,
             "--input_dir", str(processed_ds),
             "--num_true", "0",
             "--num_false", str(num_false),
@@ -165,20 +182,20 @@ class RunErrorConditioningCLI(scfg.DataConfig):
             "--max_questions", str(n_kept),
             "--n", str(cfg.n),
             "--batch_size", str(min(8, n_kept)),
-            "--tensor_parallel_size", "1",
+            "--tensor_parallel_size", str(cfg.tensor_parallel_size),
             "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
             "--max_tokens", str(cfg.max_tokens),
         ], check=True)
 
         print(f"[card-node §3] step 6/7: eval conditioned", flush=True)
         subprocess.run(cdrag + [
-            "eval", "math",
+            "eval", _eval_verb,
             "--dataset_dir", str(cond_dir),
             "--single_partition", "--n_jobs", "1",
         ], check=True)
 
         cond_jsonl = _latest(cond_dir, "evaluated_*.jsonl", exclude_suffix="_flattened.jsonl")
-        direct_jsonl = _latest(direct_dir, "evaluated_*.jsonl", exclude_suffix="_flattened.jsonl")
+        direct_jsonl = _latest(init.init_dir, "evaluated_*.jsonl", exclude_suffix="_flattened.jsonl")
         summary_path = work_dir / "ec_summary.json"
 
         print(f"[card-node §3] step 7/7: analysis error_conditioning run", flush=True)

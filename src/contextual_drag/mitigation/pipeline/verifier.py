@@ -1,4 +1,9 @@
-"""Streaming math verification for AIME-style benchmarks.
+"""Streaming, task-aware solve verification for the mitigation pipeline.
+
+Dispatches per `task`: math/qa_mc -> boxed-answer math equivalence;
+24-game -> `is_correct_game_of_24` (formula uses the given numbers & == 24);
+crux-i/crux-o -> the crux code-execution verifier (run the function on the
+predicted input, compare output). Math is the default for unknown tasks.
 
 Each solve generation is annotated in place with two new keys:
     extracted_answer: contents of the LAST `\\boxed{...}` in the response, or None
@@ -72,6 +77,46 @@ def _verify_one(text: str, ground_truth: Optional[str]) -> tuple[Optional[str], 
     return extracted, is_equivalent_math(extracted, ground_truth)
 
 
+# Task families that need a non-math verifier (names match the `dataset` /
+# `task_name` the card nodes pass through to the mitigation pipeline).
+GAME24_TASKS = {"24-game"}
+CRUX_TASKS = {"crux-i", "crux-o"}
+
+
+def _verify_one_game24(text, ground_truth):
+    """24-game: boxed formula must use the supplied numbers and evaluate to 24."""
+    from contextual_drag.evaluation.game_of_24.verification import is_correct_game_of_24
+    extracted = extract_boxed_answer(text)
+    if extracted is None or ground_truth is None:
+        return extracted, None
+    return extracted, is_correct_game_of_24(extracted, ground_truth)
+
+
+def _crux_cio_mode(row: dict):
+    """Pull (code, input, output, mode) from a solve row (direct fields or the
+    carried `traj1_metadata`), mirroring crux `evaluate_single_entry`."""
+    info = row if ("mode" in row and "code" in row) else (row.get("traj1_metadata") or {})
+    return (info.get("code"), info.get("input"), info.get("output"), info.get("mode"))
+
+
+def _verify_one_crux(text, cio_mode):
+    """crux: execute the function on the predicted input and compare output."""
+    from contextual_drag.evaluation.crux.utils.evaluation_utils import evaluate_single_response
+    code, inp, out, mode = cio_mode
+    res = evaluate_single_response({"generated_response": text or ""}, (code, inp, out), mode)
+    return res.get("extracted_answer"), res.get("correctness")
+
+
+def _select_verifier(task, ground_truth, row):
+    """Pick (worker, per-generation arg) for the task. Default: math."""
+    t = (task or "").strip()
+    if t in GAME24_TASKS:
+        return _verify_one_game24, (row or {}).get("answer", ground_truth)
+    if t in CRUX_TASKS:
+        return _verify_one_crux, _crux_cio_mode(row or {})
+    return _verify_one, ground_truth
+
+
 class Verifier:
     """Async fan-out wrapper around a ProcessPoolExecutor.
 
@@ -95,14 +140,17 @@ class Verifier:
         return self._pool
 
     async def annotate(self, generations: list[dict],
-                       ground_truth: Optional[str]) -> list[dict]:
+                       ground_truth: Optional[str] = None, *,
+                       task: Optional[str] = None,
+                       row: Optional[dict] = None) -> list[dict]:
         if not generations:
             return generations
         pool = self._ensure_pool()
         loop = asyncio.get_running_loop()
+        worker, arg = _select_verifier(task, ground_truth, row)
         futures = [
-            loop.run_in_executor(pool, _verify_one,
-                                 g.get("generated_response", ""), ground_truth)
+            loop.run_in_executor(pool, worker,
+                                 g.get("generated_response", ""), arg)
             for g in generations
         ]
         results = await asyncio.gather(*futures, return_exceptions=True)

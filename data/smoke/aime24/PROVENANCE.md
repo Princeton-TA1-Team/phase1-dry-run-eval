@@ -13,7 +13,7 @@
 | Byte size     | 7 376 B                                                                                                                                                                       |
 | Transient files dropped | `cache-*.arrow`                                                                                                                                                    |
 
-Used by `cards/contextual_drag_error_conditioning.yaml` (§3) as the
+Used by `cards/smoke_runs/Qwen3_8B_NoThinking/error-conditioning-posthoc/aime24.yaml` (§3) as the
 default benchmark. The original `aime24` is the 2024 AIME competition
 problem set, repackaged upstream in
 `neurips_result_aggregation/Contextual-Drag/data/aime24/`; the slice is

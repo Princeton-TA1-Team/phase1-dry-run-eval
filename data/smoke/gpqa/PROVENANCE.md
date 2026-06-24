@@ -13,8 +13,8 @@
 | Byte size     | 12 888 B                                                                                                |
 | Transient files dropped | `cache-*.arrow`                                                                              |
 
-Used by `cards/contextual_drag.yaml` (baseline drag claim) and
-`cards/contextual_drag_mitigation.yaml` (§4) as the default benchmark.
+Used by `cards/smoke_runs/Qwen3_8B_NoThinking/drag/gpqa.yaml` (baseline drag claim) and
+`cards/smoke_runs/Qwen3_8B_NoThinking/mitigation/gpqa.yaml` (§4) as the default benchmark.
 The original `gpqa` (Rein et al., 2023, "GPQA: A Graduate-Level
 Google-Proof Q&A Benchmark") was repackaged with multiple-choice labels
 upstream in `yc6206/metacognition_eval`; the slice is unmodified.

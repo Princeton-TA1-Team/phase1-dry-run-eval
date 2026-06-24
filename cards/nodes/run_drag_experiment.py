@@ -1,13 +1,14 @@
 """
 Magnet pipeline node: run the full contextual-drag pipeline as a single node.
 
-Internally subprocesses the canonical 6-step chain:
+Internally subprocesses the canonical 6-step chain (steps 1-3 are init
+sampling, auto-reused from the shared <init_cache_root>/<model>/<dataset> cache):
     inference run (clean prompt)
-      -> eval math --flatten_dataset
+      -> eval math --flatten_dataset   (eval verb math/crux/game_of_24 per dataset family)
       -> data initial-sampling-postprocess
-      -> data aggregate -T num_true -F num_false
+      -> data aggregate -T num_true -F num_false   (aggregate-crux when dataset=crux-i)
       -> inference run (2F prompt)
-      -> eval math --response_column twof_generations
+      -> eval math --response_column twof_generations   (eval verb per dataset family)
 
 Computes:
     acc_clean : init-inference accuracy *restricted to the problems that
@@ -40,6 +41,9 @@ import sys
 from pathlib import Path
 
 import scriptconfig as scfg
+
+from cards.nodes._dataset_registry import aggregate_command_for, eval_verb_for
+from cards.nodes._init_cache import ensure_init_sampling
 
 
 class RunDragExperimentCLI(scfg.DataConfig):
@@ -99,6 +103,10 @@ class RunDragExperimentCLI(scfg.DataConfig):
         help="vLLM GPU memory fraction.",
         tags=["algo_param"],
     )
+    tensor_parallel_size = scfg.Value(
+        1, type=int, tags=["algo_param"],
+        help="vLLM tensor-parallel GPUs per model instance (shard one model across "
+             "N GPUs). gpt-oss-20B MoE is validated at TP=4.")
     num_true = scfg.Value(
         0,
         type=int,
@@ -126,6 +134,27 @@ class RunDragExperimentCLI(scfg.DataConfig):
         tags=["algo_param"],
     )
 
+    dataset = scfg.Value(
+        "",
+        help=(
+            "Benchmark name (e.g. gpqa, crux-i, 24-game). When set, the node "
+            "selects the eval verb (math/crux/game_of_24) and aggregate command "
+            "per dataset family; empty preserves legacy math/aggregate behavior."
+        ),
+        tags=["algo_param"],
+    )
+
+    init_cache_root = scfg.Value(
+        "runs/init_cache",
+        help=(
+            "Shared init-sampling cache root, keyed by <model>/<dataset>. Cards "
+            "with matching init config (model/dataset/template/n/max_tokens/"
+            "max_questions) auto-reuse it instead of regenerating. Empty string "
+            "= card-local init."
+        ),
+        tags=["algo_param"],
+    )
+
     results_fpath = scfg.Value(
         "results.json",
         help=(
@@ -142,70 +171,38 @@ class RunDragExperimentCLI(scfg.DataConfig):
         results_fpath = Path(cfg.results_fpath).resolve()
         results_fpath.parent.mkdir(parents=True, exist_ok=True)
         work_dir = results_fpath.parent
-        init_dir = work_dir / "init_inference"
         twof_dir = work_dir / "twof_inference"
         aggregate_dir = work_dir / "aggregate"
-        init_dir.mkdir(parents=True, exist_ok=True)
         twof_dir.mkdir(parents=True, exist_ok=True)
         aggregate_dir.mkdir(parents=True, exist_ok=True)
 
         cdrag = [sys.executable, "-m", "contextual_drag"]
+        _ds = str(cfg.dataset).strip()
+        _eval_verb = eval_verb_for(_ds) if _ds else "math"
+        _agg_cmd = aggregate_command_for(_ds) if _ds else "aggregate"
 
-        # 1. Clean-prompt inference
-        print("[card-node] step 1/6: clean-prompt inference", flush=True)
-        subprocess.run(
-            cdrag + [
-                "inference", "run",
-                "--model_config", str(cfg.model_config),
-                "--data_path", str(cfg.data_path),
-                "--prompt_template_path", str(cfg.init_template_path),
-                "--prompt_template_key", str(cfg.init_template_key),
-                "--output_dir", str(init_dir),
-                "--task_name", "init_response",
-                "--max_questions", str(cfg.max_questions),
-                "--n", str(cfg.n),
-                "--batch_size", str(min(8, int(cfg.max_questions))),
-                "--tensor_parallel_size", "1",
-                "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
-                "--max_tokens", str(cfg.max_tokens),
-            ],
-            check=True,
+        # Steps 1-3: init sampling (clean inference -> eval --flatten ->
+        # postprocess), auto-reused from the shared
+        # <init_cache_root>/<model>/<dataset> cache on an init-config match.
+        print("[card-node] steps 1-3/6: init sampling (shared cache)", flush=True)
+        init = ensure_init_sampling(
+            cdrag=cdrag, work_dir=work_dir, init_cache_root=cfg.init_cache_root,
+            model_config=cfg.model_config, data_path=cfg.data_path,
+            init_template_path=cfg.init_template_path,
+            init_template_key=cfg.init_template_key,
+            max_questions=cfg.max_questions, n=cfg.n, max_tokens=cfg.max_tokens,
+            gpu_memory_utilization=cfg.gpu_memory_utilization,
+            tensor_parallel_size=int(cfg.tensor_parallel_size),
+            eval_verb=_eval_verb, dataset=_ds,
         )
-
-        # 2. Eval (with --flatten_dataset for the postprocess step)
-        print("[card-node] step 2/6: eval clean", flush=True)
-        subprocess.run(
-            cdrag + [
-                "eval", "math",
-                "--dataset_dir", str(init_dir),
-                "--single_partition", "--n_jobs", "1",
-                "--flatten_dataset",
-            ],
-            check=True,
-        )
-
-        # 3. Postprocess. Default glob is */*/*flattened.jsonl (3 deep);
-        #    our flattened file lives at init_inference/evaluated_*_flattened.jsonl
-        #    so we override the template to match that 1-deep layout.
-        print("[card-node] step 3/6: postprocess flattened jsonl", flush=True)
-        subprocess.run(
-            cdrag + [
-                "data", "initial-sampling-postprocess",
-                "--input_dir", str(work_dir),
-                "--input_file_template", "init_inference/*flattened.jsonl",
-            ],
-            check=True,
-        )
-        processed_ds = work_dir / "processed_flattened_init_responses.ds"
-        if not processed_ds.exists():
-            raise FileNotFoundError(f"postprocess did not create {processed_ds}")
+        processed_ds = init.processed_ds
 
         # 4. Aggregate. May exit 1 if 0 problems pass the filter — capture
         #    that as a legible card outcome rather than letting magnet bomb.
         print("[card-node] step 4/6: aggregate (build 2F dataset)", flush=True)
         agg = subprocess.run(
             cdrag + [
-                "data", "aggregate",
+                "data", _agg_cmd,
                 "--input_dir", str(processed_ds),
                 "--num_true", str(cfg.num_true),
                 "--num_false", str(cfg.num_false),
@@ -251,7 +248,7 @@ class RunDragExperimentCLI(scfg.DataConfig):
                 "--max_questions", str(n_kept),
                 "--n", str(cfg.n),
                 "--batch_size", str(min(8, n_kept)),
-                "--tensor_parallel_size", "1",
+                "--tensor_parallel_size", str(cfg.tensor_parallel_size),
                 "--gpu_memory_utilization", str(cfg.gpu_memory_utilization),
                 "--max_tokens", str(cfg.max_tokens),
             ],
@@ -262,7 +259,7 @@ class RunDragExperimentCLI(scfg.DataConfig):
         print("[card-node] step 6/6: eval 2F", flush=True)
         subprocess.run(
             cdrag + [
-                "eval", "math",
+                "eval", _eval_verb,
                 "--dataset_dir", str(twof_dir),
                 "--single_partition", "--n_jobs", "1",
                 "--response_column", "twof_generations",

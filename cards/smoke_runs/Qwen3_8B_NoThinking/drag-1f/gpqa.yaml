@@ -1,0 +1,42 @@
+# Contextual Drag — 1F drag (single incorrect draft, RAW/unfiltered).
+# Produces + caches the shared 1F conditioned inference (runs/cond_cache/<model>/<dataset>/1f/);
+# the error-conditioning-posthoc analysis card reuses it (no second inference).
+title: "Contextual Drag — 1F drag (raw, single incorrect draft)"
+description: |
+  Direct vs single-incorrect-draft (1F) conditioned pass@1 over all problems (raw,
+  pre verdict-filter). Runs init sampling -> aggregate T0 F1 -> 1F conditioned
+  inference -> eval -> analysis, caching the conditioned inference for reuse by the
+  error-conditioning-posthoc analysis card.
+version: 0.1
+organizations: [Kitware]
+submitter: {name: Contextual Drag refactor team, email: jon.crall@kitware.com}
+tags: [contextual-drag, reasoning, drag-1f]
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception(
+          "Inconclusive: aggregation produced 0 problems with >=2 correct & >=2 "
+          "incorrect drafts — increase --n/--max_questions or pick the model's "
+          "ambiguous zone.")
+    assert drag_1f >= drag_threshold, (
+        f"Got drag_1f={drag_1f:+.3f}, expected >= {drag_threshold:+.3f} "
+        f"(acc_direct={acc_direct:.3f}, acc_1f={acc_1f:.3f}, n_kept_problems={n_kept_problems}).")
+pipeline:
+  drag_1f:
+    executable: 'python -m cards.nodes.run_drag_1f'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/smoke/gpqa/gpqa.ds'
+      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      init_template_key: 'qa_mc_prompt'
+      cond_template_path_1f: 'prompt_templates/1f_templates.json'
+      cond_template_key_1f: '1f'
+      max_questions: 16
+      n: 8
+      max_tokens: 8192
+      gpu_memory_utilization: 0.85
+      dataset: 'gpqa'
+    out_paths:
+      results_fpath: 'results.json'
+symbols:
+  drag_threshold: {type: float, value: 0.05}

@@ -1,0 +1,62 @@
+title: Contextual Drag [recursive_naive] — GPT_OSS_20B_recursive × hmmt24 (formal, full dataset)
+description: |
+  Formal full-dataset recursive_naive run for `GPT_OSS_20B_recursive` (init_alias `GPT_OSS_20B`) on `hmmt24`.
+  Hand-rendered (recursive is out of the scalable `cards.render_formal` renderer); claim/threshold inherited from the recursive_naive smoke card.
+version: 0.1
+organizations:
+- Kitware
+submitter:
+  name: Contextual Drag refactor team
+  email: jon.crall@kitware.com
+tags:
+- contextual-drag
+- recursive
+- self-deterioration
+- baseline
+- reasoning
+claim:
+  python: |
+    if aggregate_failed:
+      raise Exception(
+          "Inconclusive: Stage-0 aggregation produced 0 problems for the "
+          "round-0 draft pool. Bump --max_questions or pick a (model, task) "
+          "cell where the init responses surface at least one failed "
+          "trajectory per problem."
+      )
+    if makeup_exhausted:
+      raise Exception(
+          "Inconclusive: the makeup loop exhausted its attempts before the "
+          "final round produced any solves — every recursive round dropped "
+          "the same problem(s). Raise makeup_max_attempts/makeup_batch_size, "
+          "or pick a benchmark with more parseable trajectories."
+      )
+    assert delta_acc_naive <= deterioration_threshold, (
+        f"Got delta_acc_naive={delta_acc_naive:+.3f}, expected <= "
+        f"{deterioration_threshold:+.3f} "
+        f"(acc_round_0={acc_round_0:.3f}, acc_round_max={acc_round_max:.3f}, "
+        f"variant=naive). PASS direction is `<=` — we predict the model "
+        f"degrades under naive (uncleaned) recursion."
+    )
+pipeline:
+  recursive_naive:
+    executable: python -m cards.nodes.run_recursive_naive
+    algo_params:
+      model_config: GPT_OSS_20B_recursive
+      init_alias: GPT_OSS_20B
+      task: hmmt24
+      data_path: data/full_data/hmmt24/hmmt24.ds
+      template_path: prompt_templates/1f_templates.json
+      init_template_path: prompt_templates/init_response_prompt_templates.json
+      init_n_samples: 8
+      max_recursive_steps: 16
+      n_samples_solve: 16
+      tensor_parallel_size: 4
+      gpu_memory_utilization: 0.9
+      max_tokens: 65536
+      n_runs: 16
+    out_paths:
+      results_fpath: results.json
+symbols:
+  deterioration_threshold:
+    type: float
+    value: -0.05

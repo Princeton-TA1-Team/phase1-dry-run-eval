@@ -1,6 +1,6 @@
 # Contextual Drag — failed reasoning in the prompt context degrades accuracy.
 #
-# This is the *real* contextual-drag claim card (vs. cards/contextual_drag_smoke.yaml,
+# This is the *real* contextual-drag claim card (vs. cards/smoke_runs/Qwen3_8B_NoThinking/wiring/math500.yaml,
 # which only verifies magnet ↔ this repo wiring). It runs the full
 # clean → aggregate → 2F → drag pipeline on the host's GPU.
 #

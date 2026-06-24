@@ -3,5 +3,18 @@ __pycache__/
 .pytest_cache/
 outputs/
 evaluation_runs/
+runs/
 .coverage
 .ruff_cache/
+cards/runs/
+slurm_logs/
+# Cluster-specific SLURM submission wrappers are local (the committed,
+# portable interface is scripts/run_*.sh). slurm_logs/ already ignored above.
+scripts/*.slurm
+
+*.pyc
+
+# Rendered formal cards are build artifacts (python -m cards.render_formal); regenerate.
+# Keep the hand-authored recursive cards (render_formal does NOT produce these).
+cards/formal_test/*
+!cards/formal_test/GPT_OSS_20B_recursive/

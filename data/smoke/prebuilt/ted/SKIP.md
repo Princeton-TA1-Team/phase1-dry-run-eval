@@ -1,7 +1,7 @@
 # Pre-built TED artefacts — DEFERRED
 
 This directory will eventually contain pre-built artefacts that let
-`cards/contextual_drag_ted.yaml` skip the GPU-bound steps — specifically:
+`cards/smoke_runs/Qwen3_8B_NoThinking/ted/24-game.yaml` skip the GPU-bound steps — specifically:
 
   * a 32-problem `direct_inference/evaluated_*_flattened.jsonl`,
   * the `minimal_aggregated_data_T0_F2.ds` post-aggregate,
@@ -13,7 +13,7 @@ Status: **not built**. Producing these artefacts requires a host with a
 GPU large enough to run Qwen3_8B_NoThinking at n=8 on the 24-game slice;
 the cards-impl agent that wrote this bundle has no GPU access.
 
-Until they ship, `cards/contextual_drag_ted.yaml` runs in its default
+Until they ship, `cards/smoke_runs/Qwen3_8B_NoThinking/ted/24-game.yaml` runs in its default
 "inline" mode (everything from clean inference forward is recomputed on
 the host's GPU; the TED build-cache step itself is CPU-bound but cheap
 for a 32-problem slice — single-digit minutes). The card already handles

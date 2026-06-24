@@ -1,0 +1,39 @@
+# Contextual Drag §3.2 — error conditioning POST-HOC (PURE ANALYSIS, no GPU).
+# Reads the verdict-FILTERED metric from the shared 1F conditioned-inference cache
+# that the drag-1f card produced. NOT launched on the GPU sweep — run drag-1f first.
+title: "Contextual Drag §3.2 — error conditioning post-hoc (analysis-only)"
+description: |
+  Pure post-hoc analysis: reads runs/cond_cache/<model>/<dataset>/1f/ec_summary.json
+  (produced by the drag-1f card) and reports the verdict-filtered drag.
+  delta_acc = correctness_filtered_init_sampling - correctness_filtered.
+  No inference — run the drag-1f card for this (model, dataset) first.
+version: 0.1
+organizations: [Kitware]
+submitter: {name: Contextual Drag refactor team, email: jon.crall@kitware.com}
+tags: [contextual-drag, error-conditioning, analysis]
+claim:
+  python: |
+    if cache_missing:
+      raise Exception(
+          "Inconclusive: no cached 1F conditioned inference for this (model, dataset) "
+          "— run the drag-1f card first (this is a pure post-hoc analysis card).")
+    if filter_dropped_all:
+      raise Exception("Inconclusive: the verdict filter dropped every conditioned response.")
+    if delta_acc is None:
+      raise Exception("Inconclusive: delta_acc is null.")
+    assert delta_acc >= delta_threshold, (
+        f"Got delta_acc={delta_acc:+.3f}, expected >= {delta_threshold:+.3f} "
+        f"(acc_direct={acc_direct:.3f}, acc_conditioned={acc_conditioned:.3f}, "
+        f"n_kept_problems={n_kept_problems}, regime={regime}).")
+pipeline:
+  ec_posthoc:
+    executable: 'python -m cards.nodes.run_ec_posthoc'
+    algo_params:
+      model_config: 'Qwen3_8B_NoThinking'
+      data_path: 'data/smoke/aime24/aime24.ds'
+      dataset: 'aime24'
+      cond_cache_root: 'runs/cond_cache'
+    out_paths:
+      results_fpath: 'results.json'
+symbols:
+  delta_threshold: {type: float, value: 0.05}

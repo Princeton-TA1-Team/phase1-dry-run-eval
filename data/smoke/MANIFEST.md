@@ -40,13 +40,13 @@ sliced.save_to_disk(DEST)                 # drops cache-*.arrow afterwards
 
 | Card                                             | Slice                          | Claim symbol           | Threshold |
 | ------------------------------------------------ | ------------------------------ | ---------------------- | --------- |
-| `contextual_drag_smoke.yaml`                     | `math500/math500.ds` (4 rows)  | `accuracy`             | ≥ 0.25    |
-| `contextual_drag.yaml`                           | `gpqa/gpqa.ds` (16 rows)       | `drag`                 | ≥ 0.05    |
-| `contextual_drag_error_conditioning.yaml`        | `aime24/aime24.ds` (16 rows)   | `delta_acc`            | ≥ 0.05    |
-| `contextual_drag_mitigation.yaml`                | `gpqa/gpqa.ds` (16 rows)       | `recovery_rate`        | ≥ 0.20    |
-| `contextual_drag_ted.yaml`                       | `24-game/24-game.ds` (32 rows) | `ted_drag`             | ≥ 1.0     |
+| `smoke_runs/Qwen3_8B_NoThinking/wiring/math500.yaml`                     | `math500/math500.ds` (4 rows)  | `accuracy`             | ≥ 0.25    |
+| `smoke_runs/Qwen3_8B_NoThinking/drag/gpqa.yaml`                           | `gpqa/gpqa.ds` (16 rows)       | `drag`                 | ≥ 0.05    |
+| `smoke_runs/Qwen3_8B_NoThinking/error-conditioning-posthoc/aime24.yaml`        | `aime24/aime24.ds` (16 rows)   | `delta_acc`            | ≥ 0.05    |
+| `smoke_runs/Qwen3_8B_NoThinking/mitigation/gpqa.yaml`                | `gpqa/gpqa.ds` (16 rows)       | `recovery_rate`        | ≥ 0.20    |
+| `smoke_runs/Qwen3_8B_NoThinking/ted/24-game.yaml`                       | `24-game/24-game.ds` (32 rows) | `ted_drag`             | ≥ 1.0     |
 
-`contextual_drag.yaml` and `contextual_drag_mitigation.yaml` both default
+`smoke_runs/Qwen3_8B_NoThinking/drag/gpqa.yaml` and `smoke_runs/Qwen3_8B_NoThinking/mitigation/gpqa.yaml` both default
 to gpqa — that's deliberate (same model × benchmark cell, different
 claim). The smoke card uses math500 because it's in the model's "easy"
 zone so wiring failures stand out, while the real drag claim needs the

@@ -35,11 +35,12 @@ def _cfg_to_args(cfg) -> argparse.Namespace:
 
     init_alias = cfg.init_alias or cfg.model_config
     task_name = cfg.task_name or "task"
-    # run_id seeds round-0 trajectory selection; use a fixed value so reruns
-    # of the same cell pick the same drafts. The output dir is the cell dir
-    # itself — no extra <run_id>/ subdir — because the cards already give us
-    # a per-cell output_dir.
-    run_id = 0
+    # run_id seeds round-0 trajectory selection AND per-round continuation picks,
+    # so distinct run_ids give independent trajectories (the multi-run wrapper
+    # launches run_id 1..N). seed seeds rollout generation (fixed across runs,
+    # matching the old-repo deploy_sweep). Output dir is the cell dir itself.
+    run_id = int(cfg.run_id)
+    _seed = int(cfg.seed)
 
     cell = TaskConfig(
         task=task_name,
@@ -52,7 +53,7 @@ def _cfg_to_args(cfg) -> argparse.Namespace:
         max_recursive_steps=cfg.max_recursive_steps,
         n_samples_solve=cfg.n_samples_solve,
         max_concurrent=128,
-        seed=42,
+        seed=_seed,
         variant=cfg.variant,
         verify_workers=8,
     )
@@ -76,7 +77,7 @@ def _cfg_to_args(cfg) -> argparse.Namespace:
         max_concurrent=128,
         max_tokens=cfg.max_tokens,
         max_rows_per_cell=None,
-        seed=42,
+        seed=_seed,
         verify_workers=8,
         makeup_max_attempts=4,
         makeup_batch_size=4,
@@ -104,6 +105,10 @@ class RecursiveRunCLI(scfg.DataConfig):
     template_path      = scfg.Value(None, tags=["algo_param"])
     max_recursive_steps = scfg.Value(16, type=int, tags=["algo_param"])
     n_samples_solve    = scfg.Value(8, type=int, tags=["algo_param"])
+    run_id             = scfg.Value(0, type=int, tags=["algo_param"],
+                                    help="Seeds round-0 + per-round continuation picks; vary 1..N for independent trajectories.")
+    seed               = scfg.Value(42, type=int, tags=["algo_param"],
+                                    help="Rollout-generation seed (fixed across runs, per old-repo).")
     tensor_parallel_size = scfg.Value(1, type=int, tags=["algo_param"])
     gpu_memory_utilization = scfg.Value(0.9, type=float, tags=["algo_param"])
     max_tokens         = scfg.Value(65536, type=int, tags=["algo_param"])

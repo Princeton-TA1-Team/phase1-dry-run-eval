@@ -13,7 +13,7 @@
 | Byte size     | 33 784 B                                                                                                                                                                      |
 | Transient files dropped | `cache-*.arrow`                                                                                                                                                    |
 
-Used by `cards/contextual_drag_ted.yaml` (TED) as the default benchmark.
+Used by `cards/smoke_runs/Qwen3_8B_NoThinking/ted/24-game.yaml` (TED) as the default benchmark.
 The original `24-game` is the OpenAI "24-game" arithmetic-puzzle dataset,
 repackaged upstream in `yc6206/metacognition_eval`. We slice the first 32
 rows and add a synthetic `id`; problem content is unmodified.

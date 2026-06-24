@@ -1,23 +1,4 @@
-# Contextual Drag — recursive self-improvement (naive variant — self-deterioration).
-#
-# Runs the *naive* recursive loop on the host's GPU: Stage 0 init → Loop
-# {2a draft / 2d solve via 1f prompt / 2e summary}. No strategy step,
-# no filter1 context cleaning — the prior round's failed trajectory is
-# fed directly into a 1f-style solve prompt. This is the baseline that
-# isolates "recursion alone" from "recursion + context cleaning"; the
-# expected outcome is self-deterioration (the model degrades round
-# over round) because uncleaned failed trajectories drag accuracy down.
-#
-# Claim direction: delta_acc_naive <= deterioration_threshold
-# (default -0.05). PASS = the model gets noticeably WORSE under naive
-# recursion — i.e. self-deterioration is what we're predicting.
-#
-# Default cell: GPT_OSS_20B_recursive × aime24 ×
-# max_recursive_steps=16 × n_samples_solve=8. Data lives in
-# data/full_data/<task>/<task>.ds (NOT data/smoke/).
-
-title: "Contextual Drag — naive recursive self-improvement degrades accuracy"
-
+title: Contextual Drag — naive recursive self-improvement degrades accuracy
 description: |
   Tests whether the *naive* recursive loop (no strategy critique, no
   filter1 context cleaning, just round-over-round re-solving with the
@@ -44,23 +25,18 @@ description: |
 
   Direction is the opposite of rf1: PASS requires delta_acc_naive
   <= deterioration_threshold (default -0.05).
-
 version: 0.1
-
 organizations:
-  - Kitware
-
+- Kitware
 submitter:
   name: Contextual Drag refactor team
   email: jon.crall@kitware.com
-
 tags:
-  - contextual-drag
-  - recursive
-  - self-deterioration
-  - baseline
-  - reasoning
-
+- contextual-drag
+- recursive
+- self-deterioration
+- baseline
+- reasoning
 claim:
   python: |
     if aggregate_failed:
@@ -84,26 +60,25 @@ claim:
         f"variant=naive). PASS direction is `<=` — we predict the model "
         f"degrades under naive (uncleaned) recursion."
     )
-
 pipeline:
   recursive_naive:
-    executable: 'python -m cards.nodes.run_recursive_naive'
+    executable: python -m cards.nodes.run_recursive_naive
     algo_params:
-      model_config: 'GPT_OSS_20B_recursive'
-      init_alias: 'GPT_OSS_20B'
-      task: 'aime24'
-      data_path: 'data/full_data/aime24/aime24.ds'
-      template_path: 'prompt_templates/1f_templates.json'
-      init_template_path: 'prompt_templates/init_response_prompt_templates.json'
+      model_config: GPT_OSS_20B_recursive
+      init_alias: GPT_OSS_20B
+      task: aime24
+      data_path: data/full_data/aime24/aime24.ds
+      template_path: prompt_templates/1f_templates.json
+      init_template_path: prompt_templates/init_response_prompt_templates.json
       init_n_samples: 8
       max_recursive_steps: 16
       n_samples_solve: 8
       tensor_parallel_size: 1
       gpu_memory_utilization: 0.9
       max_tokens: 65536
+      n_runs: 1
     out_paths:
-      results_fpath: 'results.json'
-
+      results_fpath: results.json
 symbols:
   deterioration_threshold:
     type: float

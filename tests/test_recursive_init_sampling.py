@@ -167,8 +167,13 @@ def test_helper_is_importable_from_wrappers() -> None:
     (`from cards.nodes._recursive_init_sampling import ensure_init_responses`).
     Catches accidental renames.
     """
+    # The init-sampling import now lives in the shared multirun helper, which both
+    # thin wrappers delegate to via run_node(...). Verify the import is in the helper
+    # and that both wrappers route through it.
     rf1_src = (CARDS_NODES_DIR / "run_recursive_filter1.py").read_text()
     naive_src = (CARDS_NODES_DIR / "run_recursive_naive.py").read_text()
+    helper_src = (CARDS_NODES_DIR / "_recursive_multirun.py").read_text()
     expected = "from cards.nodes._recursive_init_sampling import ensure_init_responses"
-    assert expected in rf1_src, "rf1 wrapper does not import ensure_init_responses"
-    assert expected in naive_src, "naive wrapper does not import ensure_init_responses"
+    assert expected in helper_src, "multirun helper does not import ensure_init_responses"
+    assert "run_node(" in rf1_src and "_recursive_multirun" in rf1_src, "rf1 wrapper does not delegate to run_node"
+    assert "run_node(" in naive_src and "_recursive_multirun" in naive_src, "naive wrapper does not delegate to run_node"
