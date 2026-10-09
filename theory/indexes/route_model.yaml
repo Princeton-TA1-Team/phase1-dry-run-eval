@@ -1,0 +1,84 @@
+# The route model of contextual drag (Princeton-2 Phase I Final card).
+#
+# NOTHING HERE IS FORMALIZED. The entries carry statements and no
+# `declaration:` / `formalization:`. Proposition 1 is proved on paper in the
+# evaluation plan ("Phase I Evaluation Plan, Team Princeton-2", section 2);
+# it is recorded as stated-not-formalized rather than pointed at a Lean
+# declaration that does not exist.
+#
+# The card TESTS the transfer conjecture. Its premises are the route model's
+# modelling assumptions; cards/nodes/cd_route_loo.py says, for each one,
+# whether the implementation satisfies it or merely assumes it.
+
+schema_version: 1
+
+entries:
+
+  - id: AIQ.Teams.Princeton.RouteModel.route_probability
+    kind: definition
+    statement: >
+      The route model. A final answer is a choice among routes: adopt one of
+      the answers in context, or set the drafts aside and solve
+      independently. Routes are taken with probability proportional to their
+      weights. With K >= 1 drafts of which T are correct, incorrect drafts in
+      answer classes with multiplicities lambda = (n_1, ..., n_r), and
+      baseline accuracy q (the probability of solving the problem with no
+      drafts), the probability of a correct final answer is
+
+        F_K(T, lambda, q; a, b, gamma)
+          = (a T^gamma + q) / (a T^gamma + b sum_j n_j^gamma + 1),
+
+      where a > 0 and b > 0 weigh one correct and one incorrect draft against
+      the independent route (unit weight), and gamma >= 0 says how agreement
+      compounds. Absent routes have zero weight.
+
+  - id: AIQ.Teams.Princeton.RouteModel.transfer_sensitivity
+    kind: theorem
+    statement: >
+      Proposition 1 (transfer sensitivity). Fix K >= 1 and a context (T,
+      lambda) with T in {0, ..., K}. For q, q' in [0, 1], positive a, b, a',
+      b' and nonnegative gamma, gamma', let F, F' be the route probability at
+      the two parameter sets. Then
+
+        |F' - F| <= |q' - q| + (1/4) (|log(a'/a)| + |log(b'/b)| + log(K) |gamma' - gamma|).
+
+      Averaging over problems gives the same bound with the mean absolute
+      error in q. The bound omits error in the route model itself and
+      sampling error, which is why the card measures prediction error on
+      held-out outcomes instead of relying on it.
+
+      STATUS: proved in the evaluation plan; not formalized.
+
+  - id: AIQ.Teams.Princeton.RouteModel.parameter_transfer
+    kind: conjecture
+    statement: >
+      Route-model parameters transfer across models. When the exponent gamma
+      is estimated from fully measured source models and a new target model
+      is measured only at its baseline and at zero and one correct draft (of
+      K = 4), the route model predicts the target's accuracy with two and
+      three correct drafts to within 5 percentage points.
+
+      The Phase I Final card tests this for one target, GPT-OSS-20B, measured
+      from scratch, with five source models (GPT-OSS-120B, Gemma4-31B,
+      Gemma4-E4B, Qwen3-32B, Qwen3-8B) measured before submission with the
+      same protocol, on AIME and HMMT 2024-25. Leave-one-model-out over all
+      six models on the pre-submission data gave 4 of 6 targets within
+      tolerance. A passing verdict rests on point estimates: at about 22
+      eligible problems the simultaneous 95% intervals are wider than the
+      tolerance.
+    premises:
+      - id: hcommon
+        statement: >
+          one weight pair (a, b) per model and one exponent gamma shared by all
+          models, common across problems
+      - id: hretain
+        statement: >
+          the independent-solution route keeps the model's no-draft accuracy q
+          when drafts are in context
+      - id: hself
+        statement: >
+          each model sees only drafts it wrote itself
+      - id: hheldout
+        statement: >
+          the target model's predicted rungs enter no fit: its weights come from
+          its baseline and calibration rungs only, and gamma from the sources

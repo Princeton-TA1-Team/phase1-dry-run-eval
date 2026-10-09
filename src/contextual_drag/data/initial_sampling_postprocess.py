@@ -5,7 +5,42 @@ from pathlib import Path
 from tqdm import tqdm
 from datasets import Dataset
 
+_HARMONY_FINAL = "<|channel|>final<|message|>"
+_HARMONY_ANALYSIS = "<|channel|>analysis<|message|>"
+_HARMONY_END_TOKENS = ("<|return|>", "<|end|>", "<|endoftext|>")
+_GEMMA_THINKING_END = "<channel|>"
+_GEMMA_THINKING_START = "<|channel>"
+
+
 def parse_thinking_steps(response: str, prompt: str, max_response_length: int):
+    """
+    Split a response into its final, answer-facing text and a status.
+
+    Example:
+        >>> parse_thinking_steps('<|channel|>analysis<|message|>hm<|end|><|start|>assistant<|channel|>final<|message|>Ans<|return|>', '', 100)
+        ('Ans', 'parsable_thinking')
+        >>> parse_thinking_steps('<|channel>thought hm<channel|>Ans', '', 100)
+        ('Ans', 'parsable_thinking')
+        >>> parse_thinking_steps('<|channel>thought hm', '', 100)
+        ('', 'malformed_thinking')
+    """
+    # gpt-oss harmony with special tokens kept (skip_special_tokens=False,
+    # which is how this package samples).
+    if _HARMONY_FINAL in response:
+        final_part = response.split(_HARMONY_FINAL)[-1]
+        for tok in _HARMONY_END_TOKENS:
+            if final_part.endswith(tok):
+                final_part = final_part[: -len(tok)]
+        return final_part.strip(), 'parsable_thinking'
+    if _HARMONY_ANALYSIS in response:
+        return response, 'malformed_thinking'
+
+    # Gemma 4: reasoning in a channel closed by <channel|>. An unclosed
+    # channel has no final text, as in the original contextual-drag parser.
+    if _GEMMA_THINKING_END in response:
+        return response.rsplit(_GEMMA_THINKING_END, 1)[-1].lstrip(), 'parsable_thinking'
+    if response.lstrip().startswith(_GEMMA_THINKING_START):
+        return '', 'malformed_thinking'
 
     if response.startswith("analysis") and response[8] != " ":
         # In GPT-OSS format

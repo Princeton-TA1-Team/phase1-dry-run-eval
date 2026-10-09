@@ -19,6 +19,16 @@
             "max_tokens": 2048
         }
     },
+    "Gemma4_31B": {
+        "model_name": "google/gemma-4-31B-it",
+        "context_length": 32768,
+        "sampling_params": {
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_tokens": 32768
+        }
+    },
     "Qwen3_5_0_8B": {
         "model_name": "Qwen/Qwen3.5-0.8B",
         "context_length": 32768,

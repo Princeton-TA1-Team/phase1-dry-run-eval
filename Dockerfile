@@ -72,7 +72,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         'zss>=1.2.0' \
         'python-Levenshtein>=0.27' \
         'networkx>=3' \
-        'matplotlib>=3.8'
+        'matplotlib>=3.8' \
+        'scipy>=1.11'
 
 # This repo, without dependencies so ordinary edits only invalidate this
 # small layer and the magnet used is the one pinned above, not the copy under

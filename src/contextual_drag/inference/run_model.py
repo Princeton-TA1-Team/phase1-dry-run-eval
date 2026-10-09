@@ -163,6 +163,49 @@ async def handle_row(engine, sampling_params, prompt, row_dict, item,
     return final
 
 
+def fit_generation_budget(sampling_params, prompt, tokenizer, context_length):
+    """
+    Cap a request's ``max_tokens`` at what its prompt leaves of the window.
+
+    An in-process vLLM engine stops a generation at ``max_model_len`` on its
+    own. An OpenAI-compatible server does not: it rejects any request whose
+    prompt plus ``max_tokens`` exceeds the window, with a 400. A card whose
+    prompts carry several drafts and whose budget is the full window -- the
+    route-model card, at 32768 -- would therefore lose every long request when
+    served from an endpoint, while the same card run in-process would not.
+    Capping per request makes the two engines generate the same thing: the
+    budget is ``min(max_tokens, context_length - prompt_tokens)``, which is
+    exactly where the in-process engine would have stopped.
+
+    Requests whose prompt plus budget already fits are returned unchanged, so
+    a card that never approaches the window is unaffected. A prompt that
+    leaves no room at all is returned unchanged too, and fails the way it
+    always has.
+
+    Args:
+        sampling_params: the cell's SamplingParams.
+        prompt (str): the fully rendered prompt.
+        tokenizer: the tokenizer the prompt was rendered with, or None.
+        context_length (int): the model config's context window.
+
+    Returns:
+        SamplingParams: the original object, or a capped clone.
+    """
+    max_tokens = getattr(sampling_params, "max_tokens", None)
+    if tokenizer is None or not max_tokens:
+        return sampling_params
+    try:
+        n_prompt = len(tokenizer(prompt, add_special_tokens=False)["input_ids"])
+    except Exception:
+        return sampling_params
+    room = int(context_length) - n_prompt
+    if room <= 0 or n_prompt + max_tokens <= context_length:
+        return sampling_params
+    capped = sampling_params.clone()
+    capped.max_tokens = room
+    return capped
+
+
 # ---------- per-cell processing ----------
 async def process_cell(engine, tokenizer, args, item, model_config):
     label = item["label"]
@@ -194,10 +237,15 @@ async def process_cell(engine, tokenizer, args, item, model_config):
         status_reporter(stats, interval=args.status_interval, label=label))
 
     with open(item["output_path"], "a") as out_fh:
+        context_length = int(model_config.get("context_length", 32768))
+
         async def bounded(rd, p):
             async with sem:
                 return await handle_row(
-                    engine, sampling_params, p, rd, item,
+                    engine,
+                    fit_generation_budget(sampling_params, p, tokenizer,
+                                          context_length),
+                    p, rd, item,
                     file_lock, out_fh, args.model_config, n_samples,
                     per_sample_requests=args.per_sample_requests)
 

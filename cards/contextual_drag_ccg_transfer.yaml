@@ -1,0 +1,294 @@
+# Contextual drag, Phase I Final: does a route model of drafts in context
+# transfer to a new model?
+#
+# Implements "Phase I Evaluation Plan, Team Princeton-2" for one held-out
+# target, GPT-OSS-20B. The card measures the target from scratch: it solves
+# AIME/HMMT 2024-25 problems 16 times; problems with >= 4 right and >= 4 wrong
+# answers are kept; for T = 0..4 correct drafts out of K = 4 it answers each
+# problem again with its own drafts in context, in 8 distinct orders; a fresh
+# 16-sample baseline is drawn under a different seed. Five already-
+# characterized models (data/route_model/source_ladders, measured before
+# submission with the same protocol) fix the route model's exponent gamma.
+# The target's weights come from its baseline and its T = 0, 1 accuracies
+# alone, and its T = 2, 3 accuracies are predicted and scored.
+#
+# Pre-registered (fixed before submission): model versions and sampling
+# settings (src/contextual_drag/resources/inference/eval_models_params.json),
+# prompts (prompt_templates/), the evaluation code, the source ladders, the
+# fitting settings and seeds below, and the pass rule in the claim.
+#
+# On the study's existing GPT-OSS-20B measurements this exact procedure gives
+# errors of -3.31 (T = 2) and -2.60 (T = 3) points, a pass.
+#
+# Serving. Every generation round goes wherever CONTEXTUAL_DRAG_ENDPOINT
+# (or infer-stack's OPENAI_BASE_URL) points; unset, an in-process vLLM engine
+# is built on one GPU. A served openai/gpt-oss-20b must have
+# max_model_len >= 32768, the window the source ladders were generated with;
+# the inference nodes check GET /v1/models and refuse a smaller window.
+#
+# Not pinned by the package, so stated here: the source ladders and the
+# retrospective used openai/gpt-oss-20b at revision
+# 6cee5e81ee83917806bbde320786a8fb61efebee (main as of 2026-10-09), and the
+# gpt-oss chat template stamps the run date into every prompt; this run's
+# prompts will carry its own date.
+
+name: contextual_drag_ccg_transfer
+
+title: "Contextual Drag — route-model transfer to GPT-OSS-20B (Phase I Final)"
+
+description: |
+  Asking a model to improve on earlier attempts in its context is a building
+  block of recursive self-improvement, but the attempts do more than inform:
+  correct drafts pull the model toward the right answer and wrong drafts toward
+  their errors (contextual drag). This card tests a route model of that effect
+  and whether its parameters transfer to a model measured only partially.
+
+  The route model treats the final answer as a choice among routes -- adopt an
+  answer already in context, or solve independently -- taken in proportion to
+  their weights. With K drafts of which T are correct, wrong drafts in answer
+  classes of sizes n_j, and no-draft accuracy q,
+  F = (a T^gamma + q) / (a T^gamma + b sum_j n_j^gamma + 1).
+
+  The target is GPT-OSS-20B, measured from scratch by this card. Five
+  already-characterized models (GPT-OSS-120B, Gemma4-31B, Gemma4-E4B,
+  Qwen3-32B, Qwen3-8B), measured before submission with the same protocol, are
+  the sources: gamma and their weights are fit by maximum likelihood on their
+  full measurements. The target contributes only its fresh baseline accuracy
+  and its accuracy with zero and one correct draft; with gamma fixed, those
+  set its weights, and the route model predicts its accuracy with two, three
+  and four correct drafts. The claim is that the T = 2 and T = 3 predictions
+  are both within 5 points of the measured accuracy. T = 4 is reported
+  separately. Simultaneous 95% intervals come from a Bonferroni-adjusted
+  bootstrap over problems that resamples problems jointly across the target
+  and the sources and refits every stage; at about 22 eligible problems they
+  are expected to be wider than the tolerance, so the verdict rests on the
+  point estimates.
+
+version: 1.0
+
+organizations:
+  - Princeton
+
+submitter:
+  name: Yun Cheng
+  email: yc6206@princeton.edu
+
+tags:
+  - contextual-drag
+  - reasoning
+  - in-context-learning
+  - self-improvement
+  - prediction
+  - leave-one-model-out
+  - competition-math
+
+links:
+  - title: "Cheng, Zhu, Zhao and Arora. Contextual Drag: How Errors in the Context Affect LLM Reasoning. arXiv:2602.04288 (2026)"
+    url: "https://arxiv.org/abs/2602.04288"
+    type: "publication"
+  - title: "contextual_drag implementation"
+    url: "https://github.com/Princeton-TA1-Team/phase1-dry-run-eval"
+    type: "software"
+  - title: "AIME 2024"
+    url: "https://huggingface.co/datasets/HuggingFaceH4/aime_2024"
+    type: "dataset"
+  - title: "AIME 2025"
+    url: "https://huggingface.co/datasets/opencompass/AIME2025"
+    type: "dataset"
+  - title: "HMMT February 2024 and 2025"
+    url: "https://huggingface.co/datasets/MathArena/hmmt_feb_2025"
+    type: "dataset"
+
+category: "Predictive Generalization"
+
+# What the verdict stands on. The card TESTS the transfer conjecture; the
+# route model and Proposition 1 are what it is built from and why the target
+# is calibrated at T = 0, 1 rather than at its near-ceiling T = 4. The hygiene
+# statements record the sampling and measurement premises. Every link is read
+# from cards/nodes/cd_route_loo.py with `ast`; nothing is imported.
+theory:
+  indexes:
+    - ../theory/indexes/route_model.yaml
+    - ../theory/indexes/hygiene.yaml
+
+  empirical_sources:
+    - nodes/cd_route_loo.py
+
+  links:
+    - relation: tests
+      ref: AIQ.Teams.Princeton.RouteModel.parameter_transfer
+      note: >
+        The claim below is this conjecture's pass criterion for one held-out
+        target, GPT-OSS-20B, with five bundled source models.
+    - relation: approximates
+      ref: AIQ.Teams.Princeton.RouteModel.route_probability
+      note: >
+        The fitted model. Wrong-answer classes are formed from normalized
+        extracted answers; an unparsable wrong draft is a class of its own.
+    - relation: motivates
+      ref: AIQ.Teams.Princeton.RouteModel.transfer_sensitivity
+      note: >
+        Prediction error from mis-estimated weights is bounded by a quarter of
+        their log error. Calibrating a at T = 4, where every model is above
+        98%, turns a one-point error into a factor of two in a; T = 0, 1 does
+        not. Proved on paper, not formalized.
+
+claim:
+  python: |
+    # Read by name rather than bulk-dumped, so the verdict records exactly the
+    # leaves it consumed.
+    result = metrics.route_loo
+    status = result.status
+    detail = result.detail
+
+    # Not an assert: MAGNET maps AssertionError to FALSIFIED and anything
+    # else to INCONCLUSIVE. A run that could not measure every model has not
+    # tested the claim, and must not be scored as refuting it.
+    if status == 'INCONCLUSIVE':
+        raise RuntimeError(f"Inconclusive: {detail}")
+
+    # keys() lists dotted leaves (`<model>.err_t2`, ...); the model is the
+    # first segment of each.
+    models = sorted({key.split('.')[0] for key in result.per_model.keys()})
+    if len(models) != n_targets_expected:
+        raise RuntimeError(
+            f"Inconclusive: {len(models)} target models scored, the card "
+            f"declares {n_targets_expected}")
+
+    passing, report = [], []
+    for model in models:
+        fold = result.per_model[model]
+        errors = [fold[f'err_t{T}'] for T in (2, 3)]
+        ok = bool(fold.valid) and all(
+            e is not None and abs(e) <= tolerance_pp for e in errors)
+        if ok:
+            passing.append(model)
+        shown = ', '.join('n/a' if e is None else f'{e:+.2f}' for e in errors)
+        report.append(f"{model}: T2,T3 errors [{shown}] pp"
+                      + ('' if fold.valid else ' (calibration implies a negative weight)'))
+    print('[ccg_transfer] ' + '; '.join(report))
+    print(f'[ccg_transfer] {len(passing)}/{len(models)} models within '
+          f'{tolerance_pp} pp at T = 2 and T = 3: {passing}')
+
+    assert len(passing) >= min_models_pass, (
+        f"{len(passing)} of {len(models)} target models have both T = 2 and "
+        f"T = 3 prediction errors within {tolerance_pp} points; the claim "
+        f"needs {min_models_pass}. " + '; '.join(report))
+
+symbols:
+  tolerance_pp:
+    type: float
+    value: 5.0
+  min_models_pass:
+    type: int
+    value: 1
+  n_targets_expected:
+    type: int
+    value: 1
+
+  # Labels for the dashboard and for BAA metric identification. The pipeline
+  # computed these; each symbol names the evidence column it describes.
+  route_loo.mae_pp_primary:
+    metadata:
+      display_name: "Mean |error|, T = 2, 3 (pp)"
+      display: True
+      define_metric:
+        objective: minimize
+        aggregation_strategy:
+          type: 'mean'
+  route_loo.mae_pp:
+    metadata:
+      display_name: "Mean |error|, all predictions (pp)"
+      display: True
+      define_metric:
+        objective: minimize
+        aggregation_strategy:
+          type: 'mean'
+  route_loo.max_abs_err_pp:
+    metadata:
+      display_name: "Largest |error| (pp)"
+      display: True
+  route_loo.n_models_pass:
+    metadata:
+      display_name: "Targets within 5 pp at T = 2, 3"
+      display: True
+  route_loo.n_models_supported:
+    metadata:
+      display_name: "Targets whose 95% simultaneous intervals lie within 5 pp"
+      display: True
+
+# Judge this invocation's run, not every result the shared store holds.
+evidence:
+  scope: requested
+
+kwdagger:
+  pipeline: 'cards.pipelines.route_model_pipeline()'
+  result_node: route_loo
+  matrix:
+    # ---- the draft pool: 16 clean answers per problem --------------------
+    pool_inference.data_fpath: 'data/full_data/compmath/compmath.ds'
+    # The target. The other five models are the bundled source ladders.
+    pool_inference.model_config: GPT_OSS_20B
+    pool_inference.template_path: 'prompt_templates/init_response_prompt_templates.json'
+    pool_inference.template_key: 'qwen_math_prompt'
+    pool_inference.task_name: 'init_response'
+    pool_inference.max_questions: 120
+    pool_inference.n: 16
+    pool_inference.max_tokens: 32768
+    # Thinking ON, stated: every model reasons before answering, as in the
+    # study. Passing neither flag would also mean on, by accident.
+    pool_inference.thinking: True
+    pool_inference.seed: 42
+    pool_inference.gpu_memory_utilization: 0.85
+    pool_inference.tensor_parallel_size: 1
+
+    eval_pool.flatten_dataset: True
+
+    # ---- problem selection and draft ladders -----------------------------
+    compose.K: 4
+    compose.n_orders: 8
+    compose.min_correct: 4
+    compose.min_incorrect: 4
+    compose.seed: 20260916
+    compose.max_draft_chars: 0
+
+    # ---- the ladder: one answer per (problem, rung, order) ---------------
+    ladder_inference.template_path: 'prompt_templates/draft_composition_templates.json'
+    ladder_inference.template_key: 'dc_same_math'
+    ladder_inference.task_name: 'init_response'
+    ladder_inference.max_questions: 0
+    ladder_inference.n: 1
+    ladder_inference.max_tokens: 32768
+    ladder_inference.thinking: True
+    ladder_inference.seed: 42
+    ladder_inference.gpu_memory_utilization: 0.85
+    ladder_inference.tensor_parallel_size: 1
+
+    # ---- the baseline: 16 FRESH answers per kept problem -----------------
+    # A different seed from the pool: same prompt and seed would reproduce
+    # the pool's answers, and the pool chose the problems.
+    baseline_inference.template_path: 'prompt_templates/init_response_prompt_templates.json'
+    baseline_inference.template_key: 'qwen_math_prompt'
+    baseline_inference.task_name: 'init_response'
+    baseline_inference.max_questions: 0
+    baseline_inference.n: 16
+    baseline_inference.max_tokens: 32768
+    baseline_inference.thinking: True
+    baseline_inference.seed: 1234
+    baseline_inference.gpu_memory_utilization: 0.85
+    baseline_inference.tensor_parallel_size: 1
+
+    ladder.K: 4
+    ladder.max_loss_frac: 0.05
+
+    # ---- transfer to the target --------------------------------------
+    route_loo.source_ladders_dpath: 'data/route_model/source_ladders'
+    route_loo.n_targets_expected: 1
+    route_loo.calibration_rungs: '0,1'
+    route_loo.primary_rungs: '2,3'
+    route_loo.secondary_rungs: '4'
+    route_loo.tolerance_pp: 5.0
+    route_loo.min_models_pass: 1
+    route_loo.n_boot: 2000
+    route_loo.boot_seed: 20260904
+    route_loo.confidence: 0.95

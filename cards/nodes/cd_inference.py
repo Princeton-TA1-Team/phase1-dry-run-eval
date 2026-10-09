@@ -103,6 +103,17 @@ class CDInferenceCLI(scfg.DataConfig):
         tags=['out_path', 'primary'])
 
     @classmethod
+    def _extra_run_args(cls, config) -> list:
+        """
+        Further ``inference run`` flags a subclass declares params for.
+
+        A hook rather than a new param here: declaring a param on this class
+        moves the node-id hash of every card that uses it (see the module
+        docstring), so a flag only some cards need lives on a subclass.
+        """
+        return []
+
+    @classmethod
     def main(cls, argv=None, **kwargs):
         config = cls.cli(argv=argv, data=kwargs, strict=True, verbose=True)
 
@@ -196,7 +207,7 @@ class CDInferenceCLI(scfg.DataConfig):
             '--tensor_parallel_size', config.tensor_parallel_size,
             '--gpu_memory_utilization', config.gpu_memory_utilization,
             '--max_tokens', config.max_tokens,
-        ] + params_args + thinking_args)
+        ] + params_args + thinking_args + cls._extra_run_args(config))
 
         completions = first_match(output_dir, 'completions.jsonl')
 

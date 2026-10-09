@@ -10,6 +10,39 @@ import numpy as np
 
 from .math_utils import extract_boxed_answer
 
+#: Gemma 4 closes its reasoning channel with this token; the answer follows it.
+GEMMA_THINKING_END = "<channel|>"
+GEMMA_THINKING_START = "<|channel>"
+
+
+def answer_facing_text(response_text: str) -> str:
+    """
+    The part of a response its final answer should be extracted from.
+
+    Gemma 4 writes its reasoning in a channel and the answer after
+    ``<channel|>``. A boxed expression inside the reasoning is a draft, not
+    the answer, so extraction reads only what follows the last delimiter; a
+    response that opened the channel and never closed it has no answer. This
+    matches the parser the original contextual-drag runs graded Gemma 4 with.
+    Every other response is returned unchanged.
+
+    Example:
+        >>> answer_facing_text('<|channel>thought draft<channel|>answer')
+        'answer'
+        >>> answer_facing_text('<|channel>thought draft')
+        ''
+        >>> answer_facing_text('plain answer')
+        'plain answer'
+    """
+    if not response_text:
+        return response_text or ''
+    if GEMMA_THINKING_END in response_text:
+        return response_text.rsplit(GEMMA_THINKING_END, 1)[-1].lstrip()
+    if response_text.lstrip().startswith(GEMMA_THINKING_START):
+        return ''
+    return response_text
+
+
 def evaluate_single_response(response: Dict[str, Any], ground_truth: str, equivalent_parser: Callable) -> Dict[str, Any]:
     """
     Evaluate a single response by comparing extracted answer with ground truth.
@@ -23,9 +56,10 @@ def evaluate_single_response(response: Dict[str, Any], ground_truth: str, equiva
         The response dictionary with added 'correctness' and 'extracted_answer' fields
     """
     response_text = response.get('generated_response', '')
-    
-    # Extract answer from response
-    extracted_answer = extract_boxed_answer(response_text)
+
+    # Extract answer from the answer-facing text. For every family but
+    # Gemma 4 this is the whole response, as before.
+    extracted_answer = extract_boxed_answer(answer_facing_text(response_text))
     
     # Determine correctness
     if extracted_answer is None:

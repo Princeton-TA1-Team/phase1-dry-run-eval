@@ -79,7 +79,9 @@ def _node_module_from_pipeline(card: dict) -> str | None:
             return match.group(1)
 
     kwdagger_spec = card.get("kwdagger") or {}
-    terminal = kwdagger_spec.get("terminal_node")
+    # MAGNET renamed `terminal_node` to `result_node`; accept either.
+    terminal = (kwdagger_spec.get("result_node")
+                or kwdagger_spec.get("terminal_node"))
     if not terminal:
         return None
     return _terminal_node_module(kwdagger_spec.get("pipeline", ""), terminal)
@@ -164,6 +166,16 @@ def test_card_claim_symbols_are_declared(card_path: Path) -> None:
     node_module = _node_module_from_pipeline(card)
     wrapper_keys = _wrapper_result_keys(node_module) if node_module else set()
     allowed = symbols | wrapper_keys | _BUILTIN_WHITELIST
+    kwdagger_spec = card.get("kwdagger") or {}
+    if kwdagger_spec:
+        # `magnet evaluate_new` binds a kwdagger card's evidence row as the
+        # namespaces `metrics` / `params` / `resolved_params`, plus a view per
+        # node name; the node's own keys are reached through them.
+        allowed |= {"metrics", "params", "resolved_params"}
+        result_node = (kwdagger_spec.get("result_node")
+                       or kwdagger_spec.get("terminal_node"))
+        if result_node:
+            allowed.add(result_node)
 
     tree = ast.parse(card["claim"]["python"])
     referenced = {

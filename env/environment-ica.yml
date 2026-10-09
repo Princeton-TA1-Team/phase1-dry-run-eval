@@ -35,7 +35,8 @@ dependencies:
       - fsspec>=2024.9
       - h5py>=3.14
       - kwarray>=0.7.1
-      - kwdagger>=0.2.3
+      - kwdagger>=0.4.1
+      - scipy>=1.11
       - kwutil>=0.3.8
       - lazy-loader>=0.4
       - loguru>=0.7.3
@@ -53,6 +54,5 @@ dependencies:
       # Editable installs of aiq-magnet + the local package CANNOT go here:
       # conda dumps this pip block to /tmp/condaenv.XXX.requirements.txt and pip
       # resolves `-e <relative_path>` against THAT file's directory, not the
-      # user's CWD. Run `bash scripts/install.sh` instead — it creates this
-      # env and then `conda run -n phase1-dry-run-eval pip install -e ...` the two repo
-      # packages in a single command.
+      # user's CWD. Run `bash scripts/install.sh` instead: it creates this
+      # env and then installs this package with MAGNET 0.1.0 into it.
