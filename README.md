@@ -1,282 +1,281 @@
-# AIQ-Contextual-Drag
+# Contextual Drag in GPT-OSS-20B: Route-Model Prediction
 
-[AIQ-magnet](https://github.com/AIQ-Kitware/aiq-magnet) integration for *Contextual Drag* (Cheng et al., 2026, arXiv:2602.04288): a self-contained, pip-installable Python package that reproduces five evaluation cards on a single GPU.
+**Princeton TA1 (Princeton-2) — Phase I Final evaluation card for DARPA AIQ**
 
-The package wraps an async vLLM inference driver, a resumable per-row evaluator, a context-manipulation mitigation pipeline, and three analysis modules (error-conditioning, tree-edit distance, mitigation outcome buckets) behind a unified `scriptconfig.ModalCLI`. Five magnet cards subprocess the CLI to produce claim verdicts:
+This repository contains the evaluation card `cards/contextual_drag_ccg_transfer.yaml`, which implements *Phase I Evaluation Plan, Team Princeton-2* for **GPT-OSS-20B**. The card measures how GPT-OSS-20B's accuracy changes when its own earlier drafts are in its context. It then tests whether a route model of contextual drag predicts that accuracy from a partial measurement. The card runs on [AIQ-MAGNET](https://github.com/AIQ-Kitware/aiq-magnet) 0.1.0 and is started with `bash scripts/run_ccg_transfer.sh`.
 
-| Card | Claim | Runtime |
-|---|---|---|
-| `contextual_drag_smoke` | `accuracy ≥ 0.25` on math500 (wiring smoke) | ≤ 3 min |
-| `contextual_drag` | `drag = acc_clean − acc_2f ≥ 0.05` (§2 baseline) | ≤ 8 min |
-| `contextual_drag_error_conditioning` | `delta_acc = acc_direct − acc_conditioned ≥ 0.05` (§3) | ≤ 12 min |
-| `contextual_drag_mitigation` | `recovery_rate ≥ 0.20` for `cm_filter1` (§4) | ≤ 15 min |
-| `contextual_drag_ted` | `ted_drag = mean_TED(direct) − mean_TED(2f) ≥ 1.0` | ≤ 10 min |
-| `contextual_drag_recursive_filter1` | `delta_acc_rf1 = acc_round_max − acc_round_0 ≥ +0.02` (§5: strategy+filter recursion **lifts** accuracy) | hours–days per task |
-| `contextual_drag_recursive_naive` | `delta_acc_naive = acc_round_max − acc_round_0 ≤ −0.05` (§6: naive recursion **degrades** accuracy — self-deterioration prediction) | hours–days per task |
+The earlier Phase I dry-run cards and the setup they ran on are documented in [README_LEGACY.md](README_LEGACY.md).
 
-> **Data location.** The recursive cards default to `data/full_data/<task>/<task>.ds` (full benchmarks). `data/full_data/` is the new home for full benchmark data going forward; the other cards default to `data/smoke/<task>/<task>.ds` which remains the bounded-runtime wiring fixture.
+## Contents
 
-> **Recursive cards take raw benchmarks.** The recursive card wrappers auto-detect whether `data_path` is a raw benchmark `.ds` (`id, problem, answer, ...`) or an already-flattened init-response `.ds` (with `init_response_generations_metadata` columns). If raw, the wrapper runs a one-shot **Stage -1 init-sampling** prelude (`contextual-drag inference run` → `contextual-drag data initial-sampling-postprocess`) under `<output_dir>/init_sampling/` before the recursive loop. Stage -1 has its own resume sentinel; a finished init-sampling run is reused across re-invocations. Users invoking `contextual-drag recursive run` *directly* (without a card) must produce the init-response `.ds` themselves first — see [Running recursive cards from raw benchmarks](#running-recursive-cards-from-raw-benchmarks) below for the three-command CLI flow.
+1. [Motivation](#1-motivation)
+2. [Route Model of Contextual Drag](#2-route-model-of-contextual-drag)
+3. [Evaluation Protocol](#3-evaluation-protocol)
+4. [Metrics and Pass Criterion](#4-metrics-and-pass-criterion)
+5. [Pre-Submission Result](#5-pre-submission-result)
+6. [Running the Evaluation](#6-running-the-evaluation)
+7. [Repository Structure](#7-repository-structure)
+8. [Testing](#8-testing)
 
-## Design principles
+## 1. Motivation
 
-- **No scheduler dependency.** The host process is assumed to hold its GPU(s) for the duration of a card; there is no Slurm, no SBATCH, no `--dependency=afterany`. All scheduling is the caller's responsibility.
-- **Kill-safe checkpointing.** Inference and evaluation stream their outputs as JSONL with append + flush + fsync per row, keyed by `prompt_hash = sha256(rendered_prompt)[:16]`. SIGTERM mid-run drains in-flight requests and exits cleanly; the next invocation resumes at the next unfinished row. Per-stage `.ds` artefact-presence resume covers the mitigation chain.
-- **Self-contained.** Every artefact the cards consume is either bundled (smoke datasets in `data/smoke/`, prompt templates in `prompt_templates/`, packaged resources in `src/contextual_drag/resources/`) or passed in by the caller via explicit CLI flags. The package never resolves paths in collaborator scratch directories.
-- **Per-cell CLI surface.** Every verb takes one (model, dataset, output\_dir) cell. The multi-cell sweep machinery and external path registry from the upstream research repo are deliberately omitted.
+Asking a language model to improve an earlier attempt in its context is a basic building block of recursive self-improvement. Iterative agentic workflows assume that a model can use previous attempts to produce a better answer, guided by feedback from itself, tools or other agents. An earlier attempt in context does more than add information, however. Correct attempts guide the model toward the right solution, and incorrect attempts bias it toward similar errors. This latter effect is *contextual drag* [1].
 
-## Quickstart
+The evaluation uses a simple theory that predicts a model's accuracy from the composition of the drafts in its context. It asks whether GPT-OSS-20B, measured only partially, behaves as the theory predicts once its parameters are set from those partial measurements.
+
+## 2. Route Model of Contextual Drag
+
+The final answer is treated as a choice among routes. The model either adopts one of the answers in its context or sets the drafts aside and solves the problem independently, and each route is taken with probability proportional to its weight.
+
+Consider $`K \ge 1`$ drafts of which $`T`$ are correct. Let $`q_{i}`$, the *baseline accuracy*, be the model's probability of solving problem $`i`$ without drafts. Correct drafts share one normalized answer. Incorrect drafts fall into answer classes with multiplicities $`\lambda = (n_1, \dots, n_r)`$, where $`\sum_j n_j = K - T`$. The route model gives the probability of a correct final answer as
+
+```math
+F_K(T, \lambda, q_{i}; \theta) = \frac{a\, T^{\gamma} + q_{i}}{a\, T^{\gamma} + b \sum_j n_j^{\gamma} + 1}, \qquad \theta = (a, b, \gamma). \qquad\qquad (1)
+```
+
+The parameters are:
+- **Draft weights.** The positive weights $`a`$ and $`b`$ weigh a single correct and a single incorrect draft against the independent solution, which has unit weight and is correct with probability $`q_{i}`$.
+- **Agreement exponent.** $`\gamma \ge 0`$ describes how agreement compounds. At $`\gamma = 1`$ a repeated answer counts in proportion to its repetitions, above 1 agreement is amplified, and at 0 only distinct answers matter.
+- **Absent routes** have zero weight.
+
+The model assumes that parameters are common across problems, and that the independent-solution route retains accuracy $`q_{i}`$ in context.
+
+**Proposition 1 (Transfer sensitivity).** Fix an integer $`K \ge 1`$ and a context $`(T, \lambda)`$ with $`T \in \{0, \dots, K\}`$. For $`q, \hat q \in [0, 1]`$, positive $`a, b, \hat a, \hat b`$ and nonnegative $`\gamma, \hat\gamma`$, let $`F_K`$ and $`\hat F_K`$ denote (1) at the two parameter sets. Then
+
+```math
+|\hat F_K - F_K| \le |\hat q - q| + \tfrac{1}{4}\left( \left|\log \tfrac{\hat a}{a}\right| + \left|\log \tfrac{\hat b}{b}\right| + \log(K)\, |\hat\gamma - \gamma| \right).
+```
+
+Averaging over problems gives the same bound with the mean absolute error in $`q_i`$. The bound omits error in the route model itself and sampling error, so the evaluation measures prediction error on held-out outcomes.
+
+The route model, Proposition 1 and the claim the card tests are recorded with their premises in `theory/indexes/route_model.yaml`. The card links to them through MAGNET's theory annotations.
+
+## 3. Evaluation Protocol
+
+### 3.1 Setting
+
+The evaluation uses four competition mathematics benchmarks, AIME 2024, AIME 2025, HMMT 2024 and HMMT 2025: 120 problems in total (`data/full_data/compmath`). Every context holds $`K = 4`$ drafts written by GPT-OSS-20B itself, and $`T`$ ranges from 0 to 4.
+
+**Fixed before submission.** Model version, prompts, inference settings, evaluation code, fitting settings, random seeds and the pass criterion:
+
+| Setting | Value |
+|---|---|
+| Model | `openai/gpt-oss-20b` (`GPT_OSS_20B` in `src/contextual_drag/resources/inference/eval_models_params.json`) |
+| Sampling | Temperature 1.0, top-p 1.0, top-k 40; reasoning on; up to 32,768 tokens per response |
+| Prompts | `qwen_math_prompt` for answers without drafts; `dc_same_math` (`prompt_templates/draft_composition_templates.json`) for answers with drafts |
+| Seeds | Draft pool 42; contexts 42; baseline 1234; draft composition 20260916; bootstrap 20260904 |
+| Pass criterion | Errors at $`T = 2`$ and $`T = 3`$ both at most 5.0 percentage points |
+
+All of these are set in the card's `kwdagger.matrix`.
+
+### 3.2 Measurement under Contextual Drag
+
+GPT-OSS-20B first solves each problem 16 times with nothing else in its context. These 16 answers become its drafts.
+- **Problem selection.** A problem is kept only if at least four of the 16 answers are correct and at least four are wrong. Every mix of four drafts, from all wrong to all correct, can then be built on the same problems. These are also the problems that matter for iterative self-improvement: the model often fails on its first try but can still reach the correct answer with more attempts.
+- **Contexts.** For each kept problem and each value of $`T`$, the evaluation picks $`T`$ correct and $`4 - T`$ wrong drafts. It shows them in eight distinct random orders. The model is not told which drafts are correct and is not asked to judge them; it is asked only to solve the problem.
+- **Measured accuracy.** The final answer of every draft and the number of drafts sharing each wrong answer are recorded. The model's new answers are graded and averaged, first over the eight orders and then over problems, giving the measured accuracy $`p^{\mathrm{obs}}_{T}`$.
+- **Baseline accuracy.** $`q_{i}`$ is estimated from 16 new answers per problem, drawn under a different seed. The first 16 answers are not reused, because they chose the problems, and reusing them would make the baseline look too high.
+
+**Grading and draft text.** An answer is the last `\boxed{}` expression in the response, compared with the reference by `math_verify`. A response without one counts as incorrect. Drafts are each answer's final section with the reasoning trace removed. Wrong-answer classes group drafts by their normalized answer; an unparsable wrong draft forms a class of its own.
+
+### 3.3 Prediction for GPT-OSS-20B
+
+**Shared exponent.** The exponent $`\gamma`$ is shared across models. It is estimated by maximum likelihood from reference measurements of five other models, collected under this same protocol before submission. Those measurements are bundled in `data/route_model/source_ladders` with their provenance; the card reads them and does not regenerate them.
+
+**Calibration.** For GPT-OSS-20B, only three quantities are used: its baseline accuracy, and its accuracy with zero and with one correct draft. From these, its weights $`(a, b)`$ are fitted by maximum likelihood with $`\gamma`$ fixed. Each fit uses every problem's baseline accuracy and the actual pattern of wrong answers in each context.
+
+**Prediction.** Equation (1) then predicts GPT-OSS-20B's accuracy with two, three and four correct drafts. If the calibration data imply a negative weight, the prediction is reported as failed.
+
+**Why not calibrate at $`T = 4`$.** The accuracy with four correct drafts is not used to set the weights. GPT-OSS-20B scores above 98% in that case, so the accuracy barely depends on $`a`$: very different values of $`a`$ give almost the same accuracy. Working backward from it would turn a one-point measurement error into an error that can double or halve $`a`$.
+
+## 4. Metrics and Pass Criterion
+
+For each predicted value of $`T`$ the card reports the error
+
+```math
+\texttt{ccg\_abs\_error\_pp} = 100\, |\hat p_{T} - p^{\mathrm{obs}}_{T}|,
+```
+
+together with the signed error, the measured and predicted accuracies, and the fitted parameters.
+
+Following the BAA criterion of at most 5% error, the card passes if the $`T = 2`$ and $`T = 3`$ errors are both at most 5.0 points. The $`T = 4`$ prediction is reported separately and does not enter the criterion.
+
+MAGNET reports the outcome of the claim as follows:
+
+| MAGNET result | Condition |
+|---|---|
+| VERIFIED | Both deciding errors are at most 5.0 points. |
+| FALSIFIED | A deciding error exceeds 5.0 points, or the calibration data imply a negative weight. |
+| INCONCLUSIVE | GPT-OSS-20B could not be measured: no problem met the selection rule, more than 5% of the kept problems lack a full set of contexts or a baseline, or a stage of the pipeline failed. |
+
+### 4.1 Uncertainty and Sample Size
+
+Simultaneous 95% intervals for the signed errors come from a bootstrap over problems with 2,000 replicates. Each replicate refits every stage, including the shared exponent. The intervals are Bonferroni-adjusted: the $`T = 2`$ and $`T = 3`$ errors form one family and the $`T = 4`$ error another. The result has statistical support if both deciding intervals lie inside $`[-5, 5]`$; otherwise the intervals are reported as unresolved.
+
+GPT-OSS-20B's selection rule kept 22 problems in pre-submission data. At that size the intervals are wider than five points, so the pass criterion rests on point estimates. Five-point half-widths would need roughly 50 to 110 eligible problems.
+
+## 5. Pre-Submission Result
+
+The same procedure on GPT-OSS-20B measurements collected before submission (22 eligible problems, baseline accuracy 56.8%):
+
+| $`T`$ | Measured | Predicted | Signed error (pp) | 95% interval |
+|---|---|---|---|---|
+| 2 | 90.3% | 87.0% | −3.31 | −17.2 to +6.9 |
+| 3 | 96.6% | 94.0% | −2.60 | −13.3 to +4.4 |
+| 4 | 98.3% | 96.8% | −1.53 | −7.2 to +2.4 |
+
+Both deciding errors are within 5.0 points, so MAGNET reports VERIFIED. A fresh run of the card draws new answers. Given these interval widths, its errors may fall on either side of the tolerance.
+
+## 6. Running the Evaluation
+
+### 6.1 Installation
 
 ```bash
-git clone --recurse-submodules <url> && cd AIQ-Contextual-Drag
-bash scripts/install.sh                          # one-shot: conda env + editable installs of aiq-magnet + contextual_drag
+git clone https://github.com/Princeton-TA1-Team/phase1-dry-run-eval.git
+cd phase1-dry-run-eval
+git checkout phase1-final/ccg-transfer
+bash scripts/install.sh
 conda activate phase1-dry-run-eval
-python -m magnet.evaluation cards/contextual_drag_smoke.yaml
 ```
 
-`scripts/install.sh` runs `conda env create -f env/environment-ica.yml` and then installs `submodules/aiq-magnet` and the local package via `conda run -n phase1-dry-run-eval pip install -e ...`. The two-step split is intentional: conda dumps the env-yml pip block to `/tmp/condaenv.XXX.requirements.txt` and pip resolves editable paths relative to that file's directory, not your CWD, so embedding `--editable ./submodules/aiq-magnet` directly in `environment-ica.yml` silently breaks. Use `ICA_NEW=1 bash scripts/install.sh` for the vLLM-0.19 environment.
-
-Use `env/environment-ica-new.yml` (and `conda activate phase1-dry-run-eval-new`) for the model families that need vLLM 0.19.
-
-## Running the cards
-
-Each command is run from the repo root on a host with one 24 GB GPU already allocated. Symbol thresholds and target values reflect the Qwen3_8B_NoThinking defaults baked into each card; algo params (model, task, sample count, threshold) are sweepable via magnet.
-
-The "last verified" numbers below come from a clean smoke run on an H100 (80 GB) with `Qwen3_8B_NoThinking`, `max_tokens=8192`, `context_length=32768`, and the card's stock default algo params.
-
-### Wiring smoke
+`scripts/install.sh` creates the conda environment `phase1-dry-run-eval` with Python 3.11, vLLM 0.10.2, MAGNET 0.1.0 and this package. In an existing Python 3.11 environment, the equivalent is:
 
 ```bash
-python -m magnet.evaluation cards/contextual_drag_smoke.yaml
+pip install -e ".[inference,magnet,analysis,eval]"
 ```
 
-- PASS: `accuracy ≥ min_accuracy` (default 0.25; typical ≥ 0.75 for Qwen3_8B_NoThinking on math500).
-- Purpose: prove the magnet ↔ contextual_drag plumbing end-to-end. Not a scientific claim.
-- **Last verified**: `VERIFIED`, accuracy = 0.5 on 4 math500 problems × n=1.
+All data, prompts and reference measurements are in the repository. Only the model weights and tokenizer are downloaded at run time.
 
-### §2 baseline drag
+### 6.2 Running the Card
 
 ```bash
-python -m magnet.evaluation cards/contextual_drag.yaml
+bash scripts/run_ccg_transfer.sh --dry_run True    # compile the ten stages and check the setup
+bash scripts/run_ccg_transfer.sh                   # full evaluation
 ```
 
-- PASS: `drag ≥ drag_threshold` (default 0.05). Typical measured drag on gpqa: +0.10 to +0.45 depending on which problems land in the aggregate-filtered cohort.
-- INCONCLUSIVE: `aggregate_failed: true` — the `≥ num_false` failed-trajectory filter produced no problems. Increase `n` or pick a model whose pass@k on the chosen task sits in the ambiguous zone.
-- **Last verified**: `VERIFIED`, drag = +0.094 (acc_clean = 0.531, acc_2f = 0.438), n_kept = 4 on gpqa × 8 problems × n=8.
+The full evaluation generates about 3,000 to 3,600 responses, each up to 32,768 tokens with reasoning on, which takes hours of GPU time. The pre-submission data was generated on 80 GB GPUs. Results are written to `evaluation_runs/` ([Section 6.4](#64-output-files)).
 
-### §3 error-conditioning
-
-```bash
-python -m magnet.evaluation cards/contextual_drag_error_conditioning.yaml
-```
-
-- PASS: `delta_acc ≥ delta_threshold` (default 0.05). Target on aime24 × Qwen3_8B × regime `2f` at full sample sizes: ≈ +0.22.
-- INCONCLUSIVE: `aggregate_failed: true` or `filter_dropped_all: true` — `data aggregate` returned 0 problems, or the regime-specific verdict filter (`<overall_verdict>incorrect</overall_verdict>` for 1f/2f) rejected every conditioned response. Switch `regime` to `framing` (no verdict filter), or increase `n` / `max_questions`.
-- **Last verified**: pipeline-functional end-to-end, but `FALSIFIED` on the stock smoke slice — delta_acc = 0.0 (acc_direct = 0.5, acc_conditioned = 0.5) with only n_kept = 2 problems surviving the 2F aggregate + verdict filter on a 16-problem × n=4 aime24 slice. The pipeline correctly refuses to verify when the kept cohort is this thin; bump `n` to 8 or use the framing regime to drive the claim past threshold.
-
-### §4 mitigation
-
-```bash
-python -m magnet.evaluation cards/contextual_drag_mitigation.yaml
-```
-
-- PASS: `recovery_rate ≥ recovery_threshold` (default 0.20). Target on gpqa × Qwen3_8B × `cm_filter1`: ≈ 0.40.
-- INCONCLUSIVE: `drag_failed_den == 0` — the (Direct ✓, 1F ✗) denominator was empty. Bump `max_questions` or choose a (model, task) cell with stronger measured drag.
-
-### TED structural drag
-
-```bash
-python -m magnet.evaluation cards/contextual_drag_ted.yaml
-```
-
-- PASS: `ted_drag ≥ ted_threshold` (default 1.0). Target on 24-game × Qwen3_8B × phase `2f`: ≈ 1.5–2.0.
-- INCONCLUSIVE: `n_kept_problems == 0` — no problem had a parseable boxed expression in both the anchored and the init responses. Increase `n` or relax the answer parser.
-
-### §5 Recursive self-improvement (rf1)
-
-```bash
-python -m magnet.evaluation cards/contextual_drag_recursive_filter1.yaml
-```
-
-- PASS: `delta_acc_rf1 = acc_round_max − acc_round_0 ≥ delta_threshold_rf1` (default `+0.02`). The model is given its own previous draft, a strategy critique, and a filtered (cleaned) context, then asked to re-solve; this loop runs `max_recursive_steps` times. PASS = strategy + context-filtering recursion lifts pass@1 by at least 2 pts.
-- INCONCLUSIVE: `aggregate_failed` (Stage-0 produced 0 problems for the round-0 draft pool) or `makeup_exhausted` (every round dropped the same problem, so the final round has no solves). Bump `max_questions`, raise `makeup_max_attempts`, or pick a (model, task) cell where the init responses surface failed trajectories.
-- Defaults: `model_config=GPT_OSS_20B_recursive`, `init_alias=GPT_OSS_20B`, `task=aime24` (sweepable over `{aime24, aime25, hmmt24, hmmt25}`), `data_path=data/full_data/<task>/<task>.ds`, `max_recursive_steps=16`, `n_samples_solve=8`, `init_template_path=prompt_templates/init_response_prompt_templates.json`, `init_n_samples=8`. The wrapper auto-runs Stage -1 init-sampling when `data_path` lacks `init_response_*` columns; the resulting `processed_flattened_init_responses.ds` lives at `<output_dir>/init_sampling/`. Runtime: hours to days per task on a single H100; per-stage `.ds` artifact resume + per-row prompt-hash resume make multi-day runs kill-safe.
-
-### §6 Recursive self-improvement (naive — self-deterioration prediction)
-
-```bash
-python -m magnet.evaluation cards/contextual_drag_recursive_naive.yaml
-```
-
-- PASS: `delta_acc_naive = acc_round_max − acc_round_0 ≤ deterioration_threshold` (default `−0.05`). The naive variant strips Stage 1 (strategy) and stages 2b/2c (join + filter1) — the previous round's incorrect trajectory feeds directly into a 1f-style solve prompt with no context cleaning. **Claim direction is `≤`, not `≥` — PASS means the model degrades by at least 5 pts** (self-deterioration is the prediction, isolating the contribution of recursion-alone from recursion + filtering).
-- INCONCLUSIVE: same as §5 (`aggregate_failed` or `makeup_exhausted`).
-- Defaults: identical to §5 — `model_config=GPT_OSS_20B_recursive`, `init_alias=GPT_OSS_20B`, `task=aime24`, `data_path=data/full_data/<task>/<task>.ds`, `max_recursive_steps=16`, `n_samples_solve=8`, `init_template_path=prompt_templates/init_response_prompt_templates.json`, `init_n_samples=8`. Stage -1 init-sampling is auto-run and shared between rf1 and naive when they point at the same `output_dir`. Joint sanity expectation when running both cards on the same cell: `delta_acc_rf1 >> delta_acc_naive`.
-
-### Running recursive cards from raw benchmarks
-
-The §5 / §6 wrappers handle Stage -1 transparently — pointing them at `data/full_data/<task>/<task>.ds` Just Works. If you instead invoke `contextual-drag recursive run` directly (skipping the magnet card), you must produce the init-response `.ds` yourself first. The three-command sequence the wrapper runs internally:
-
-```bash
-# (a) Stage -1: init-sampling
-contextual-drag inference run \
-    --data_path data/full_data/aime24/aime24.ds \
-    --prompt_template_path prompt_templates/init_response_prompt_templates.json \
-    --prompt_template_key qwen_math_prompt \
-    --task_name init_response \
-    --model_config GPT_OSS_20B \
-    --output_dir runs/aime24/init_sampling \
-    --n 8
-
-# (b) Stage -1 (cont): flatten + parse-thinking into the .ds Stage 0 expects
-contextual-drag data initial-sampling-postprocess \
-    --input_dir runs/aime24/init_sampling \
-    --input_file_template completions.jsonl
-
-# (c) recursive loop — now points at the produced init-response .ds
-contextual-drag recursive run --variant rf1 \
-    --model_config GPT_OSS_20B_recursive --init_alias GPT_OSS_20B \
-    --input_ds runs/aime24/init_sampling/processed_flattened_init_responses.ds \
-    --output_dir runs/aime24/recursive \
-    --template_path prompt_templates/recursive_templates.json \
-    --task_name aime24 \
-    --max_recursive_steps 16 --n_samples_solve 8
-```
-
-The per-task `--prompt_template_key` in step (a) follows the upstream convention: `question_only_prompt` for `crux-i`/`crux-o`, `qa_mc_prompt` for `gpqa`/`mmlu`, `qwen_math_prompt` for everything else (the math-style tasks). The wrapper applies this dispatch automatically.
-
-## Repository layout
-
-```
-AIQ-Contextual-Drag/
-├── pyproject.toml                 # extras: [inference, eval, analysis, magnet, dev, all]
-├── env/
-│   ├── environment-ica.yml        # vllm 0.10.2 / torch 2.8.0  (old + sft + rl families)
-│   └── environment-ica-new.yml    # vllm 0.19.1                (newer model families)
-├── src/contextual_drag/
-│   ├── cli.py                     # top-level scriptconfig.ModalCLI
-│   ├── inference/                 # async vLLM driver, per-cell, prompt-hash JSONL resume
-│   ├── evaluation/{math,crux}/    # per-cell resumable evaluator
-│   ├── data/                      # aggregation / flatten / postprocess CLIs
-│   ├── mitigation/                # cm_filter1 / cm_revise1 pipeline
-│   ├── analysis/                  # error_conditioning, ted, mitigation_buckets
-│   ├── config/{paths,resources}.py
-│   └── resources/                 # eval_models_params.json, cruxeval.jsonl, encodings
-├── prompt_templates/              # init, 1f, 2f, framing, cm, error-signal, recursive (metacognitive_filter_*) JSON templates
-├── cards/
-│   ├── contextual_drag_smoke.yaml
-│   ├── contextual_drag.yaml
-│   ├── contextual_drag_error_conditioning.yaml
-│   ├── contextual_drag_mitigation.yaml
-│   ├── contextual_drag_ted.yaml
-│   ├── contextual_drag_recursive_filter1.yaml   # §5 rf1 — improvement claim
-│   ├── contextual_drag_recursive_naive.yaml     # §6 naive — self-deterioration claim
-│   └── nodes/                     # one subprocess wrapper per card
-├── data/smoke/                    # bounded-runtime wiring fixtures (bundled raw .ds slices + PROVENANCE + MANIFEST)
-│   ├── math500/    (4 rows)
-│   ├── gpqa/       (16 rows)
-│   ├── aime24/     (16 rows)
-│   ├── 24-game/    (32 rows)
-│   └── prebuilt/                  # placeholders; cards currently run inline
-├── data/full_data/                # full benchmark .ds copies; new home for full-scale data going forward
-│   ├── aime24/  aime25/  hmmt24/  hmmt25/
-│   ├── gpqa/  crux-i/  24-game/  mmlu/
-│   └── <each task has <task>.ds/ + PROVENANCE.md>
-├── submodules/aiq-magnet/         # git submodule, pinned to a known-good commit
-├── tests/                         # pytest suite (CPU-only; vllm stubbed in conftest)
-└── .github/workflows/test.yml     # pytest + ruff on push/PR
-```
-
-## CLI reference
-
-```
-contextual-drag
-├── inference      run | dry-run | list-models
-├── eval           math | crux | game_of_24
-├── data           initial-sampling-postprocess | minimal-aggregate-flatten |
-│                  aggregate | aggregate-crux | aggregate-iterative |
-│                  stage1-postprocess-iterative
-├── mitigation     run                         # --variant cm_filter1 | cm_revise1
-├── recursive      run                         # --variant rf1 | naive
-│                                              # --model_config GPT_OSS_20B_recursive
-│                                              # --init_alias GPT_OSS_20B
-│                                              # --input_ds <processed_flattened_init_responses.ds>
-│                                              # --output_dir ...
-│                                              # --template_path prompt_templates/{recursive,1f}_templates.json
-│                                              # --max_recursive_steps 16
-│                                              # --n_samples_solve 8
-│                                              # NOTE: input is the init-response .ds, NOT raw <task>.ds.
-│                                              # The recursive cards' wrappers auto-run Stage -1 init
-│                                              # sampling (`inference run` + `data initial-sampling-
-│                                              # postprocess`) when they detect a raw .ds. For direct
-│                                              # CLI use against data/full_data/, do those two steps
-│                                              # first — see "Running recursive cards from raw
-│                                              # benchmarks" in README.
-└── analysis
-    ├── error-conditioning  run | visualize    # local jsonl in, summary json out
-    ├── ted                 build-cache | summarize | render
-    └── mitigation-buckets  run | render
-```
-
-Every verb prints its flag set under `--help`. See `cards/nodes/run_*.py` for the canonical 6–8-step subprocess chain each card invokes.
-
-## Development
-
-### Tests
-
-```bash
-pip install -e .[dev,eval,analysis,magnet]   # no [inference]; vllm is stubbed in conftest
-pytest tests/ -v
-```
-
-Coverage:
-
-- `test_smoke.py` — package import, top-level `--help`, packaged resources load.
-- `test_cli.py` — `--help` returns 0 for every CLI verb (parameterised over the full tree).
-- `test_cards.py` — every card YAML parses, claim compiles, claim symbols are declared, wrapper `--help` exits 0, subprocess chain wires through the package CLI.
-- `test_resume.py` — `load_completed_hashes` skips existing rows, tolerates truncated trailing lines, produces no duplicate hashes after appended rows.
-- `test_packaged_resources.py` — `eval_models_params.json`, `cruxeval.jsonl`, tiktoken encodings load via `importlib.resources`.
-- `test_prompt_budget.py` — regression catch-net for the `max_tokens − generation_tokens` prompt-truncation bug.
-- `test_record_schema.py` — pins the `*_generations_metadata` JSONL record schema.
-- `test_aggregate_empty.py` — `data aggregate` exits 1 with a configured-filter message on empty filter result.
-- `test_recursive_cli.py` — `contextual-drag recursive --help` exits 0, `recursive run --help` advertises `--variant {rf1,naive}`, and the seven ported pipeline modules import without vllm.
-- `test_recursive_card.py` — parameterised over both new recursive YAMLs: each parses, the claim compiles, declared symbols cover the claim, the wrapper `--help` exits 0, and the subprocess chain wires through `python -m contextual_drag recursive run --variant {rf1|naive}`.
-
-### Lint
-
-```bash
-ruff check src/contextual_drag/ cards/
-```
-
-### Environment management
-
-Two conda environments cover all model families:
-
-| Env | vLLM | Use for |
+| Variable | Default | Purpose |
 |---|---|---|
-| `phase1-dry-run-eval` (`env/environment-ica.yml`) | 0.10.2 | GPT-OSS, Nemotron, Qwen3, R1-Distill, Llama3.1, SFT, GRPO |
-| `phase1-dry-run-eval-new` (`env/environment-ica-new.yml`) | 0.19.1 | newer model families |
+| `OUTPUT_PATH` | `evaluation_runs` | Result directory |
+| `BACKEND` | `serial` | `serial` runs the stages in the foreground; `tmux` runs them in tmux sessions |
+| `CONTEXTUAL_DRAG_ENDPOINT` | unset | OpenAI-compatible endpoint; unset means the local GPU ([Section 6.3](#63-model-serving)) |
 
-Both environments install the same `contextual_drag` package via `pip install -e .[all]` plus the `aiq-magnet` submodule via `pip install -e ./submodules/aiq-magnet`.
+Further arguments go to `magnet evaluate_new`. The script runs the equivalent of:
 
-## TODO
+```bash
+PYTHONPATH=$PWD:$PWD/src magnet evaluate_new cards/contextual_drag_ccg_transfer.yaml \
+    --output_path evaluation_runs --backend serial
+```
 
-- **Verify §3 error-conditioning at a larger sample size.** The stock smoke slice (aime24 × 16 problems × n=4) was `FALSIFIED` with only n_kept = 2 surviving the 2F aggregate + verdict filter. Re-run at `n=8` or `max_questions=32` (or with `regime=framing` to bypass the verdict filter) and update the "Last verified" line under §3 once the claim crosses threshold.
-- **Verify TED structural drag.** The TED card was skipped in the v0 smoke run. Run `cards/contextual_drag_ted.yaml` end-to-end on 24-game × Qwen3_8B × phase=2f and add a "Last verified" line under "TED structural drag" with the measured `ted_drag` and `n_kept_problems`.
-- **Add a `max_tokens` / `context_length` toggle.** Today `max_tokens` in each card is the generation-only budget while `context_length` is the prompt + generation cap on `Qwen3_8B_NoThinking`. Add a card-level switch (e.g. `max_tokens_mode: {rollout_budget | model_max}`) so a card can request "use the model's full advertised context window" (32768 for Qwen3) vs. "cap generation at this rollout token budget" without editing `eval_models_params.json`. When the toggle lands, re-run §2, §3, and TED under the `rollout_budget` setting and refresh the "Last verified" numbers — current results were taken under the model-max-context regime.
+**Containerized execution.** The `Dockerfile` builds an image with the same dependencies. MAGNET can run each stage in that image:
 
-## Citation
+```bash
+docker build -t contextual-drag-gpu .
+PYTHONPATH=$PWD:$PWD/src magnet evaluate_new cards/contextual_drag_ccg_transfer.yaml \
+    --output_path evaluation_runs --backend tmux \
+    --container_image contextual-drag-gpu
+```
+
+### 6.3 Model Serving
+
+Each generation stage either builds an in-process vLLM engine on one GPU, or sends requests to an OpenAI-compatible endpoint.
+
+**Endpoint configuration.**
+- **Address.** Set `CONTEXTUAL_DRAG_ENDPOINT` to the endpoint's base URL ending in `/v1`, and `CONTEXTUAL_DRAG_ENDPOINT_API_KEY` if one is required. Under infer-stack leasing, `OPENAI_BASE_URL` is used instead.
+- **Model.** The endpoint must serve the model as `openai/gpt-oss-20b`.
+- **Server.** It should be vLLM-compatible, because requests carry `top_k`, a per-request `seed` and `skip_special_tokens: false`.
+
+**Context window.** The served context window (`max_model_len`) must be at least 32,768 tokens, matching the conditions of the reference measurements. Each generation stage checks this through `GET /v1/models` and stops if the window is smaller, giving an INCONCLUSIVE result. When a long prompt leaves less room than 32,768 tokens, the request's budget is capped at the remaining window, which is where an in-process engine stops.
+
+**Reproducibility notes.**
+- **Checkpoint.** The pre-submission data used `openai/gpt-oss-20b` at revision `6cee5e81ee83917806bbde320786a8fb61efebee`. The package does not pin the revision, so this revision should be served or cached.
+- **Prompt date.** The GPT-OSS chat template writes the current date into every prompt.
+
+**Interruption.** Each stage records its outputs row by row and resumes after an interruption.
+
+### 6.4 Output Files
+
+Paths are relative to `--output_path`:
+
+| Path | Contents |
+|---|---|
+| `<hash>_<time>/verdict.json` | Overall result |
+| `<hash>_<time>/results/<id>/verdict.json` | Claim output, including the two deciding errors |
+| `<hash>_<time>/theory.json` | Statements the card tests and the premises it assumes or satisfies |
+| `_kwdagger/route_loo/<id>/results.json` | Errors, intervals and fitted parameters |
+| `_kwdagger/route_loo/<id>/route_model_loo.json` | Complete analysis, including every bootstrap interval |
+| `_kwdagger/ladder/<id>/ladder.json` | GPT-OSS-20B's measurements under contextual drag |
+
+The run log prints the deciding errors on a line beginning `[ccg_transfer]`.
+
+## 7. Repository Structure
+
+Components used by the card:
+
+```
+cards/
+├── contextual_drag_ccg_transfer.yaml   evaluation card: claim, settings, theory links
+├── pipelines.py                        route_model_pipeline(): ten-stage kwdagger pipeline
+└── nodes/
+    ├── cd_seeded_inference.py          generation round with declared seed and endpoint check
+    ├── cd_eval.py, cd_postprocess.py   grading; removal of reasoning traces from drafts
+    ├── cd_compose.py                   problem selection and draft contexts
+    ├── cd_ladder.py                    assembly of GPT-OSS-20B's measurements
+    └── cd_route_loo.py                 estimation, prediction and bootstrap
+src/contextual_drag/
+├── analysis/route_model/               route model, maximum-likelihood fits, prediction, bootstrap
+├── data/draft_composition.py           draft-context construction
+├── inference/                          vLLM and endpoint generation with per-row resumption
+└── evaluation/math/                    answer extraction and equivalence
+data/
+├── full_data/compmath/                 AIME and HMMT 2024–25, 120 problems
+└── route_model/source_ladders/         reference measurements that fix the shared exponent
+prompt_templates/draft_composition_templates.json
+theory/indexes/route_model.yaml
+scripts/install.sh, scripts/run_ccg_transfer.sh
+Dockerfile
+```
+
+All other components belong to the earlier dry-run cards.
+
+## 8. Testing
+
+```bash
+pip install -e ".[magnet,analysis,eval,dev]"     # vLLM is stubbed in the tests
+PYTHONPATH=$PWD:$PWD/src pytest tests/ -q
+```
+
+`tests/test_route_model.py` covers the route model and its estimation:
+- **Fits.** Maximum-likelihood fits recover known parameters.
+- **Prediction.** Predictions are exact when the route model holds.
+- **Failure handling.** An implied negative weight fails the prediction.
+- **Bootstrap.** Resampling is seeded.
+- **Measurement files.** The file format round-trips.
+
+`tests/test_cards.py` checks the schema and claim of every card.
+
+## References
+
+[1] Yun Cheng, Xingyu Zhu, Haoyu Zhao and Sanjeev Arora. *Contextual Drag: How Errors in the Context Affect LLM Reasoning.* arXiv:2602.04288, 2026.
 
 ```bibtex
 @article{cheng2026contextual,
-  title        = {Contextual Drag: How Errors in the Context Affect LLM Reasoning},
-  author       = {Cheng et al.},
-  year         = {2026},
-  journal      = {arXiv preprint},
-  eprint       = {2602.04288},
-  archivePrefix= {arXiv}
+  title         = {Contextual Drag: How Errors in the Context Affect {LLM} Reasoning},
+  author        = {Cheng, Yun and Zhu, Xingyu and Zhao, Haoyu and Arora, Sanjeev},
+  journal       = {arXiv preprint arXiv:2602.04288},
+  year          = {2026},
+  eprint        = {2602.04288},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  url           = {https://arxiv.org/abs/2602.04288}
 }
 ```
 
+## Contact
+
+Yun Cheng (yc6206@princeton.edu)
+
 ## Acknowledgements
 
-This deliverable was produced jointly by Princeton-PLI and Kitware as an AIQ-magnet integration for the Contextual Drag evaluation.
+Developed by the Princeton TA1 team. The card builds on Kitware's MAGNET 0.1.0 migration of this repository.
